@@ -48,46 +48,46 @@ bus = smbus.SMBus(1) # Rev 2 Pi uses 1
 
 def lcd_init():
   # Initialise display
-  lcd_byte(0x33,LCD_CMD) # 110011 Initialise
-  lcd_byte(0x32,LCD_CMD) # 110010 Initialise
-  lcd_byte(0x06,LCD_CMD) # 000110 Cursor move direction
-  lcd_byte(0x0C,LCD_CMD) # 001100 Display On,Cursor Off, Blink Off 
-  lcd_byte(0x28,LCD_CMD) # 101000 Data length, number of lines, font size
-  lcd_byte(0x01,LCD_CMD) # 000001 Clear display
-  time.sleep(E_DELAY)
+    lcd_byte(0x33,LCD_CMD) # 110011 Initialise
+    lcd_byte(0x32,LCD_CMD) # 110010 Initialise
+    lcd_byte(0x06,LCD_CMD) # 000110 Cursor move direction
+    lcd_byte(0x0C,LCD_CMD) # 001100 Display On,Cursor Off, Blink Off 
+    lcd_byte(0x28,LCD_CMD) # 101000 Data length, number of lines, font size
+    lcd_byte(0x01,LCD_CMD) # 000001 Clear display
+    time.sleep(E_DELAY)
 
 def lcd_byte(bits, mode):
-  # Send byte to data pins
-  # bits = the data
-  # mode = 1 for data
-  #        0 for command
+    # Send byte to data pins
+    # bits = the data
+    # mode = 1 for data
+    # 0 for command
 
-  bits_high = mode | (bits & 0xF0) | LCD_BACKLIGHT
-  bits_low = mode | ((bits<<4) & 0xF0) | LCD_BACKLIGHT
+    bits_high = mode | (bits & 0xF0) | LCD_BACKLIGHT
+    bits_low = mode | ((bits<<4) & 0xF0) | LCD_BACKLIGHT
 
-  # High bits
-  bus.write_byte(I2C_ADDR, bits_high)
-  lcd_toggle_enable(bits_high)
+    # High bits
+    bus.write_byte(I2C_ADDR, bits_high)
+    lcd_toggle_enable(bits_high)
 
-  # Low bits
-  bus.write_byte(I2C_ADDR, bits_low)
-  lcd_toggle_enable(bits_low)
+    # Low bits
+    bus.write_byte(I2C_ADDR, bits_low)
+    lcd_toggle_enable(bits_low)
 
 def lcd_toggle_enable(bits):
-  # Toggle enable
-  time.sleep(E_DELAY)
-  bus.write_byte(I2C_ADDR, (bits | ENABLE))
-  time.sleep(E_PULSE)
-  bus.write_byte(I2C_ADDR,(bits & ~ENABLE))
-  time.sleep(E_DELAY)
+    # Toggle enable
+    time.sleep(E_DELAY)
+    bus.write_byte(I2C_ADDR, (bits | ENABLE))
+    time.sleep(E_PULSE)
+    bus.write_byte(I2C_ADDR,(bits & ~ENABLE))
+    time.sleep(E_DELAY)
 
 def lcd_string(message,line):
-  # Send string to display
-  message = message.ljust(LCD_WIDTH," ")
-  lcd_byte(line, LCD_CMD)
+    # Send string to display
+    message = message.ljust(LCD_WIDTH," ")
+    lcd_byte(line, LCD_CMD)
 
-  for i in range(LCD_WIDTH):
-    lcd_byte(ord(message[i]),LCD_CHR)
+    for i in range(LCD_WIDTH):
+        lcd_byte(ord(message[i]),LCD_CHR)
 
 # functions not in the original library
 # -------------------------------------
@@ -95,22 +95,22 @@ def lcd_string(message,line):
 # Positions the cursor so that the next write to the LCD
 # appears at a specific row & column, 0-org'd
 def lcd_xy(col, row):
-        lcd_byte(LCD_CMD_POSITION+col+(64*row), LCD_CMD)
+    lcd_byte(LCD_CMD_POSITION+col+(64*row), LCD_CMD)
 
 # Begins writing a string to the LCD at the current cursor
 # position. It doesn't concern itself with whether the cursor
 # is visible or not. Go off the screen? Your bad.
 def lcd_msg(msg_string):
-        for i in range(0, len(msg_string)):
-                lcd_byte(ord(msg_string[i]), LCD_CHR)
+    for i in range(0, len(msg_string)):
+        lcd_byte(ord(msg_string[i]), LCD_CHR)
 
  
 def webRead(URL):
     # Get a handle to the URL object
     try:
-       # print("Trying to open webpage...")
+        # print("Trying to open webpage...")
         h = urllib.request.urlopen(URL)
-       # print("Opened webpage... ")
+        # print("Opened webpage... ")
         response = h.read()
         #print(len(response)," chars in the response")
     except:
@@ -144,7 +144,8 @@ def getSettings(): #will have to redo as a 'getSettings' file
     unit = units[(int((settings.readline())))] #line 1 in settings.cfg corresponds to units
     pressureUnit = pressureUnits[(int((settings.readline())))] #line 2 for pressureUnits  
     tempUnit = tempUnits[(int((settings.readline())))] #line 3 for tempUnits
-    zipcode = str(settings.readline()) #line 4 holds zipcode 
+    zipcode = settings.readline() #line 4 holds zipcode 
+    zipcode = zipcode.replace("\n","")#had to remove an undesired newline
     return unit
     return pressureUnit
     return tempUnit
@@ -153,23 +154,23 @@ def getSettings(): #will have to redo as a 'getSettings' file
     settings.close()#we're done here, close the file
 
 def getZipcode():
-    while True:
-        global promptZip 
+    while True: 
         promptZip = input("Enter in a 5-Digit Zip Code: ")
         type (promptZip)
         if (len(promptZip) != 5):
             print("Invalid zipcode entered. Please try again.")
         else: #read the file to get # of lines, then write to our designated line
             with open('settings.cfg', 'r') as file: 
-                line = file.readlines()
+                line = file.readlines()          
             line[3] = str(promptZip)
             with open('settings.cfg', 'w') as file:
                 file.writelines(line)
-            return promptZip
+            zipcode = promptZip    
+            return zipcode
             break
 
-def buildUrl(): #this is so janky
-    searchUrl = ("https://search.yahoo.com/search?p=" + str(promptZip) + "+weather&fr=uh3_magweather_web_gs&fr2=p%3Aweather%2Cm%3Asb") 
+def buildUrl(): #This searches for a zip and then navigates to a corresponding weather page; builds a URL to go to.
+    searchUrl = ("https://search.yahoo.com/search?p=" + zipcode + "+weather&fr=uh3_magweather_web_gs&fr2=p%3Aweather%2Cm%3Asb")
     searchWebpage = str(webRead(searchUrl)) #getting the webpage
     searchWebpageIndex = searchWebpage.find('compText mt-10 mb-10 ml-10')#seeking for a constant tag
     searchWebpageIndex = searchWebpage.find('href', searchWebpageIndex)#further seeking
@@ -185,19 +186,25 @@ def buildUrl(): #this is so janky
     url = ''.join(map(str,urlList))
     return url
 
-#Grabbing web page for Manchester,NH
 def getWeather():
+    global webpage
     webpage = (str(webRead(url)))
     #Save to file
     file = open('webpageout.txt', 'w')
     file.write(str(webpage))
     file.close()
+    print("Current weather for " + zipcode + ":")
+    return webpage
 
+def getTemp():
     #Finding temperature
     tempIndex = webpage.find(('class="Va(t)"'))
+    tempIndex = webpage.find('>', tempIndex) + 1
+    endTempIndex = webpage.find('<', tempIndex) - 1
     temp = []
-    i = 32 #found the temperature value is at +32 characters in from the search query
-    while i <= 33: #this pulls the values from the long string, enters then into an array...
+    difference = endTempIndex - tempIndex
+    i = 0 
+    while i <= difference: #puts values into array... 
         temp.append (webpage[tempIndex + i])
         i += 1
     tempInt = int((temp[0] + temp[1])) #...then converts those two numbers into integers.
@@ -210,11 +217,16 @@ def getWeather():
     else: #Fahrenheit
         print("Temperature: " + (str(tempInt)) + "°F")
 
-  #Finding windspeed
+def getWind():
+    #Finding windspeed
     windIndex = webpage.find(('<span data-reactid="457">'))
+    windIndex = webpage.find('>', windIndex) + 1 
+    endWindIndex = webpage.find('<', windIndex) - 1
+    difference = endWindIndex - windIndex
     wind = []
-    i = 24
-    while i < 27:
+    windInt = 0
+    i = 0
+    while i < difference:
         wind.append (webpage[windIndex + i])
         i += 1
     if (wind[0] == ">"): #this accounts for when the wind is <10, putting a zero in instead of the close tag
@@ -227,14 +239,18 @@ def getWeather():
         speedUnit = "MPH"
     #Finding wind direction
     windDirIndex = webpage.find(('<!-- react-text: 458 -->'))
+    windDirIndex = webpage.find('>', windDirIndex) + 2 #+ 2 to compensate for an extra space they added in for some reason
+    endWindDirIndex = webpage.find('<', windDirIndex) - 1
+    difference = endWindDirIndex - windDirIndex
     windDir = []
-    i = 26
-    while i < 29:
+    i = 0
+    while i <= difference:
         windDir.append (webpage[windDirIndex + i])
         i += 1
-      
-    print("Windspeed: " + (str(windInt)) + speedUnit + " " + (windDir[0]))
-    
+    direction = ''.join(map(str,windDir))
+    print("Windspeed: " + (str(windInt)) + speedUnit + direction)
+   
+def getConditions():   
     #Finding conditions
     conditionIndex = webpage.find(('description Va(m)'))
     conditionIndex = webpage.find(('data-reactid="26"'), conditionIndex)
@@ -249,21 +265,29 @@ def getWeather():
     currentConditions = ''.join(map(str,webpageConditions))#turning the webpageConditions list into string
     print("Conditions: " + currentConditions)
 
+def getHumidity():
     #Finding humidity
     humidityIndex = webpage.find(('data-reactid="480"'))
+    humidityIndex = webpage.find('>', humidityIndex) + 1
+    endHumidityIndex = webpage.find('<', humidityIndex) - 1
+    difference = endHumidityIndex - humidityIndex
     humidity = []
-    i = 19
-    while i <= 20:
+    i = 0
+    while i <= difference:
         humidity.append (webpage[humidityIndex + i])
         i += 1
     humidityPercent = int((humidity[0] + humidity[1]))
     print("Humidity: " + (str(humidityPercent) + "%"))
 
+def getPressure():
     #Finding barometric pressure
     pressureIndex = webpage.find(('data-reactid="462"'))
+    pressureIndex = webpage.find('>', pressureIndex) + 1
+    endPressureIndex = webpage.find('inches', pressureIndex) - 1
+    difference = endPressureIndex - pressureIndex
     pressure = []
-    i = 19
-    while i <= 22:
+    i = 0
+    while i <= difference:
         pressure.append (webpage[pressureIndex + i])
         i += 1
     pressure = ''.join(map(str,pressure)) #turning the list into a string...
@@ -278,19 +302,28 @@ curTime = time.time()
 firstRun = 0
 
 while True:
-  if (firstRun == 0):
-    getSettings()#perhaps the user has changed the units since last run
-    getZipcode()
-    getTime()
-    buildUrl()
-    getWeather()
-    firstRun = 1
+    if (firstRun == 0):
+        getSettings()#perhaps the user has changed the units since last run
+        getTime()
+        buildUrl()
+        getWeather()
+        getTemp()
+        getWind()
+        getConditions()
+        getHumidity()
+        getPressure()
+        firstRun = 1
     
-  if (time.time()) - curTime >= 60:  
-    print("Refreshing Data...")
-    print("##############################")
-    getSettings()
-    getTime()
-    getWeather()
-    curTime = time.time()
-  
+    if (time.time()) - curTime >= 60:  
+        print("Refreshing Data...")
+        print("##############################")
+        getSettings()
+        buildUrl()
+        getTime()
+        getWeather()
+        getTemp()
+        getWind()
+        getConditions()
+        getHumidity()
+        getPressure()
+        curTime = time.time()  
