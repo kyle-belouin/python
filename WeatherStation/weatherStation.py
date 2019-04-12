@@ -348,7 +348,7 @@ def processLeds():
             GPIO.output(tempLed, ledOn)
             time.sleep(1)
             GPIO.output(tempLed, ledOff)
-            time.sleep(1)
+            time.sleep(0.75)
 
     if tempUnit == "F":
         if tempInt < 40:
