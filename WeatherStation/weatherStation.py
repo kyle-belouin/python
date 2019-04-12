@@ -8,6 +8,23 @@ import urllib.request
 import smbus
 import subprocess
 import os
+import random
+import RPi.GPIO as GPIO
+
+#LED assignments
+tempLed = 17 #green
+winterLed = 18 #blue
+alertLed = 19 #red
+conditionLed = 20 #white
+
+ledList = [tempLed, winterLed, alertLed, conditionLed]
+ledOn = GPIO.LOW
+ledOff = GPIO.HIGH
+
+GPIO.setmode(GPIO.BCM)
+GPIO.setup(ledList, GPIO.OUT)
+GPIO.output(ledList, GPIO.HIGH)
+GPIO.setwarnings(False)
 
 #LCD pin assignments, constants, etc
 I2C_ADDR  = 0x27 # I2C device address
@@ -203,6 +220,7 @@ def getTemp():
     endTempIndex = webpage.find('<', tempIndex) - 1
     temp = []
     difference = endTempIndex - tempIndex
+    global tempInt
     i = 0 
     while i <= difference: #puts values into array... 
         temp.append (webpage[tempIndex + i])
@@ -216,6 +234,7 @@ def getTemp():
         print("Temperature: " + (str(tempInt)) + "°K")
     else: #Fahrenheit
         print("Temperature: " + (str(tempInt)) + "°F")
+    return tempInt
 
 def getWind():
     #Finding windspeed
@@ -224,6 +243,8 @@ def getWind():
     endWindIndex = webpage.find('<', windIndex) - 1
     difference = endWindIndex - windIndex
     wind = []
+    global windInt
+    global direction
     windInt = 0
     i = 0
     while i < difference:
@@ -249,6 +270,8 @@ def getWind():
         i += 1
     direction = ''.join(map(str,windDir))
     print("Windspeed: " + (str(windInt)) + speedUnit + direction)
+    return windInt
+    return direction
    
 def getConditions():   
     #Finding conditions
@@ -262,8 +285,10 @@ def getConditions():
     while i <= stringLength:
         webpageConditions.append (webpage[conditionIndex + i])
         i += 1
+    global currentConditions
     currentConditions = ''.join(map(str,webpageConditions))#turning the webpageConditions list into string
     print("Conditions: " + currentConditions)
+    return currentConditions
 
 def getHumidity():
     #Finding humidity
@@ -271,6 +296,7 @@ def getHumidity():
     humidityIndex = webpage.find('>', humidityIndex) + 1
     endHumidityIndex = webpage.find('<', humidityIndex) - 1
     difference = endHumidityIndex - humidityIndex
+    global humidity
     humidity = []
     i = 0
     while i <= difference:
@@ -278,6 +304,7 @@ def getHumidity():
         i += 1
     humidityPercent = int((humidity[0] + humidity[1]))
     print("Humidity: " + (str(humidityPercent) + "%"))
+    return humidity
 
 def getPressure():
     #Finding barometric pressure
@@ -285,6 +312,7 @@ def getPressure():
     pressureIndex = webpage.find('>', pressureIndex) + 1
     endPressureIndex = webpage.find('inches', pressureIndex) - 1
     difference = endPressureIndex - pressureIndex
+    global pressure
     pressure = []
     i = 0
     while i <= difference:
@@ -297,24 +325,72 @@ def getPressure():
         print("Barometric pressure: " + (str(pressure)) + " mbar")
     else:
         print("Barometric pressure: " + (str(pressure)) + " in. Hg")
-    
+    return pressure
+
+def processLeds():
+    if tempUnit == "C":
+        if tempInt <= 4.5:     
+            GPIO.output(tempLed, ledOn)
+            time.sleep(3)
+            GPIO.output(tempLed, ledOff)
+            time.sleep(3)
+
+        if tempInt >= 4.5 <= 12.8:
+            GPIO.output(tempLed, ledOn)
+            time.sleep(2)
+            GPIO.output(tempLed, ledOff)
+            time.sleep(2)
+
+        if tempInt >= 12.8 <= 21.1:
+            GPIO.output(tempLed, ledOn)
+
+        if tempInt >= 21.1:
+            GPIO.output(tempLed, ledOn)
+            time.sleep(1)
+            GPIO.output(tempLed, ledOff)
+            time.sleep(1)
+
+    if tempUnit == "F":
+        if tempInt < 40:
+           GPIO.output(tempLed, ledOn)
+           time.sleep(3)
+           GPIO.output(tempLed, ledOff)
+           time.sleep(3)
+
+        if tempInt > 40 < 55:
+            GPIO.output(tempLed, ledOn) 
+            time.sleep(2)
+            GPIO.output(tempLed, ledOff)
+            time.sleep(2)
+        
+        if tempInt > 55 < 70:
+            GPIO.output(tempLed, ledOn)
+        
+        if tempInt >= 70:
+           GPIO.output(tempLed, ledOn)
+           time.sleep(1)
+           GPIO.output(tempLed, ledOff)
+           time.sleep(1)
+
 curTime = time.time()
 firstRun = 0
 
-while True:
-    if (firstRun == 0):
-        getSettings()#perhaps the user has changed the units since last run
-        getTime()
+while True:     
+    if firstRun == 0:
+        firstRun += 1
+        print("Program start")
+        getSettings()
         buildUrl()
+        getTime()
         getWeather()
         getTemp()
         getWind()
         getConditions()
         getHumidity()
         getPressure()
-        firstRun = 1
-    
-    if (time.time()) - curTime >= 60:  
+        curTime = time.time()
+
+    if time.time() - curTime >= 60:  
         print("Refreshing Data...")
         print("##############################")
         getSettings()
@@ -325,5 +401,7 @@ while True:
         getWind()
         getConditions()
         getHumidity()
-        getPressure()
-        curTime = time.time()  
+        getPressure()        
+        curTime = time.time()
+
+    processLeds()
