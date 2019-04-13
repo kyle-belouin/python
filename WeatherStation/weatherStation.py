@@ -153,16 +153,19 @@ def getSettings(): #will have to redo as a 'getSettings' file
     global pressureUnit
     global tempUnit
     global zipcode
+    global refreshRate
     unit = units[(int((settings.readline())))] #line 1 in settings.cfg corresponds to units
     pressureUnit = pressureUnits[(int((settings.readline())))] #line 2 for pressureUnits  
     tempUnit = tempUnits[(int((settings.readline())))] #line 3 for tempUnits
     zipcode = settings.readline() #line 4 holds zipcode 
     zipcode = zipcode.replace("\n","")#had to remove an undesired newline
+    refreshRate = int(settings.readline()) #line 5 is the refresh rate
     return unit
     return pressureUnit
     return tempUnit
     return zipcode
     return settings
+    return refreshRate
     settings.close()#we're done here, close the file
 
 def getZipcode():
@@ -475,7 +478,7 @@ def processLeds():
                 ledCurTime = time.time()
 
 #process for conditions incl winter
-    possibleConditions = ["Sunny", "Mostly Sunny", "Fair", "Cloudy", "Mostly Cloudy", "Overcast", "Showers", "Light Rain", "Rain", "Thunderstorm", "Light Snow", "Snow Shower", "Snow", "Sleet", "Freezing Rain", "Ice"]
+    possibleConditions = ["Sunny", "Mostly Sunny", "Partly Cloudy", "Cloudy", "Mostly Cloudy", "Overcast", "Showers", "Light Rain", "Rain", "Thunderstorm", "Light Snow", "Snow Shower", "Snow", "Sleet", "Freezing Rain", "Ice"]
 
     if currentConditions in possibleConditions:
         conditionIndex = possibleConditions.index(currentConditions)
@@ -570,7 +573,7 @@ while True:
         getPressure()
         curTime = time.time()
 
-    if time.time() - curTime >= 10:  
+    if time.time() - curTime >= refreshRate:  
         print("Refreshing Data...")
         print("##############################")
         getSettings()
