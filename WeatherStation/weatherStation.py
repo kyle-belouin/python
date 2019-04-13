@@ -187,6 +187,22 @@ def buildUrl(): #This searches for a zip and then navigates to a corresponding w
     return url
 
 def getWeather():
+    i = 0 #little loading animation with the lights
+    while True: 
+        GPIO.output(ledList[i], ledOn)
+        time.sleep(0.5)
+        i += 1
+        if i >= 4:
+            i -= 1
+            break
+    while True:
+        GPIO.output(ledList[i], ledOff)
+        time.sleep(0.05)
+        i -= 1
+        if i <= 0:
+            GPIO.output(ledList[0], ledOff)
+            break
+
     global webpage
     webpage = (str(webRead(url)))
     #Save to file
@@ -237,20 +253,25 @@ def getWind():
         wind.append (webpage[windIndex + i])
         i += 1
     space = wind.index(' ') #there is a space in the list that separates direction from speed value. Finding where this is.
-    windInt = int(wind[space + 1]) #temperature will always be one index ahead of the space
-    if unit == "metric":
-        windInt = round((windInt * 1.60934), 0)
-        speedUnit = "Km/h"
+    if "C" in wind:
+        windInt = 0
+        direction = ""
+        speedUnit = ""
     else:
-        speedUnit = "MPH"
+        windInt = int(wind[space + 1]) #temperature will always be one index ahead of the space
+        if unit == "metric":
+            windInt = round((windInt * 1.60934), 0)
+            speedUnit = "Km/h"
+        else:
+            speedUnit = "MPH"
     #Finding wind direction
-    windDirIndex = space - space #return index to 0
-    windDir = []
-    i = 0
-    while i <= space:
-        windDir.append (wind[windDirIndex + i])
-        i += 1
-    direction = ''.join(map(str,windDir))
+        windDirIndex = space - space #return index to 0
+        windDir = []
+        i = 0
+        while i <= space:
+            windDir.append (wind[windDirIndex + i])
+            i += 1
+        direction = ''.join(map(str,windDir))
     print("Windspeed: " + (str(windInt)) + speedUnit + " " + direction)
     return windInt
     return direction
@@ -338,8 +359,10 @@ def getPressure():
 
 def getAlerts():
     alertIndex = webpage.find('class="SevereAlertBar"')
+    global activeAlert 
     if alertIndex == -1:
-        print("Alerts: None")
+        activeAlert = "None" 
+        print("Alerts: " + activeAlert)
     else: 
         alertIndex = webpage.find('title="', alertIndex)
         alertIndex = webpage.find('"', alertIndex) + 1
@@ -350,10 +373,9 @@ def getAlerts():
         while i <= difference:
             alert.append (webpage[alertIndex + i])
             i += 1
-        global activeAlert
         activeAlert = ''.join(map(str,alert)) 
         print("Active Alert: " + activeAlert)
-        return activeAlert
+    return activeAlert
 
 ledCurTime = time.time()
 condCurTime = time.time()
@@ -453,81 +475,80 @@ def processLeds():
                 ledCurTime = time.time()
 
 #process for conditions incl winter
-    possibleConditions = ["Sunny", "Mostly Sunny", "Fair", "Cloudy", "Overcast", "Showers", "Light Rain", "Rain", "Thunderstorm", "Light Snow", "Snow Shower", "Snow", "Sleet", "Freezing Rain", "Ice"]
+    possibleConditions = ["Sunny", "Mostly Sunny", "Fair", "Cloudy", "Mostly Cloudy", "Overcast", "Showers", "Light Rain", "Rain", "Thunderstorm", "Light Snow", "Snow Shower", "Snow", "Sleet", "Freezing Rain", "Ice"]
 
     if currentConditions in possibleConditions:
         conditionIndex = possibleConditions.index(currentConditions)
         if conditionIndex <= 2: #sunny, etc
             GPIO.output(conditionLed, ledOn)
-        if conditionIndex >= 3 <= 4: #cloudy
+        if conditionIndex >= 3 <= 5: #cloudy
             if condDifference < 1:
                 GPIO.output(conditionLed, ledOn)
             if condDifference >= 1:
                 GPIO.output(conditionLed, ledOff)
             if condDifference >= 2:
                 condCurTime = time.time()
-        if conditionIndex >= 5 <= 7: #water is falling from the sky
+        if conditionIndex >= 6 <= 8: #water is falling from the sky
             if condDifference < 2:
                 GPIO.output(conditionLed, ledOn)
             if condDifference >= 2:
                 GPIO.output(conditionLed, ledOff)
             if condDifference >= 4:
                 condCurTime = time.time()
-        if conditionIndex == 8: #water is falling from the sky, likely at a high rate and with electrostaic discharges
+        if conditionIndex == 9: #water is falling from the sky, likely at a high rate and with electrostaic discharges
             if condDifference < 3:
                 GPIO.output(conditionLed, ledOn)
             if condDifference >= 3:
                 GPIO.output(conditionLed, ledOff)
             if condDifference >= 6:
                 condCurTime = time.time()
-        if conditionIndex >= 9 <= 11: #snowing!
+        if conditionIndex >= 10 <= 12: #snowing!
             GPIO.output(winterLed, ledOn)
         else:
             GPIO.output(winterLed, ledOff)
-        if conditionIndex >= 12: #icing or etc. terrible winter weather
+        if conditionIndex >= 13: #icing or etc. terrible winter weather
             if condDifference < 1:
                 GPIO.output(winterLed, ledOn)
             if condDifference >= 1:
                 GPIO.output(winterLed, ledOff)
-            if condDifference >= 1:
+            if condDifference >= 2:
                 condCurTime = time.time()
     else:
         print("Condition not supported, yell at whomever wrote this program.")
         print(currentConditions)
 
 #process alerts
-    possibleAlerts = ["Watch", "Advisory", "Warning"]
+    possibleAlerts = ["None", "Watch", "Advisory", "Warning"]
     
     if "None" in activeAlert:
+        alertIndex = 0
         GPIO.output(alertLed, ledOff)
     
     if "Watch" in activeAlert:
-        alertIndex = 0
+        alertIndex = 1
 
     if "Advisory" in activeAlert:
-        alertIndex = 1
+        alertIndex = 2
     
     if "Warning" in activeAlert:
-        alertIndex = 2
+        alertIndex = 3
 
-    if alertIndex == 0:
+    if alertIndex == 1:
         if alertDifference < 1:
             GPIO.output(alertLed, ledOn)
         if alertDifference >= 1:
             GPIO.output(alertLed, ledOff)
-        if alertDifference >= 1:
+        if alertDifference >= 2:
             alertCurTime = time.time()
-    if alertIndex == 1:
-        GPIO.output(alertLed, ledOn)
     if alertIndex == 2:
-        if alertDifference < 0.5:
+        GPIO.output(alertLed, ledOn)
+    if alertIndex == 3:
+        if alertDifference < 0.25:
             GPIO.output(alertLed, ledOn)
-        if alertDifference >= 0.5:
+        if alertDifference >= 0.25:
             GPIO.output(alertLed, ledOff)
         if alertDifference >= 0.5:
             alertCurTime = time.time()
-    #else:
-    #    GPIO.output(alertLed, ledOff)
 
 firstRun = 0
 curTime = time.time() 
