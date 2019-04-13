@@ -54,11 +54,6 @@ LCD_CMD_CLEAR = 0x01
 LCD_CMD_HOME = 0x02   # goes to position 0 in line 0
 LCD_CMD_POSITION = 0x80  # Add this to DDRAM address
 
-##GPIO.setwarnings(False)
-##GPIO.setmode(GPIO.BCM)       # Numbers GPIOs by standard marking
-##GPIO.setup(LedPin, GPIO.OUT)   # Set LedPin's mode is output
-##GPIO.output(LedPin, GPIO.HIGH) # Set LedPin high(+3.3V) to turn off led
-
 #Open I2C interface
 #bus = smbus.SMBus(0)  # Rev 1 Pi uses 0
 bus = smbus.SMBus(1) # Rev 2 Pi uses 1
@@ -131,7 +126,7 @@ def webRead(URL):
         response = h.read()
         #print(len(response)," chars in the response")
     except:
-        print("Houston? We have a problem. Can't open webpage...")
+        print("Page failed to load. Ensure you didn't enter an invalid zip code or check the network.")
         response = ""
 
     return response
@@ -187,20 +182,8 @@ def getZipcode():
             break
 
 def buildUrl(): #This searches for a zip and then navigates to a corresponding weather page; builds a URL to go to.
-    searchUrl = ("https://search.yahoo.com/search?p=" + zipcode + "+weather&fr=uh3_magweather_web_gs&fr2=p%3Aweather%2Cm%3Asb")
-    searchWebpage = str(webRead(searchUrl)) #getting the webpage
-    searchWebpageIndex = searchWebpage.find('compText mt-10 mb-10 ml-10')#seeking for a constant tag
-    searchWebpageIndex = searchWebpage.find('href', searchWebpageIndex)#further seeking
-    searchWebpageIndex = searchWebpageIndex + 6 #found we needed to 6 chars in
-    endSearchWebpageIndex = (searchWebpage.find('"', searchWebpageIndex) - 1) #link ends at a ". 
-    urlList = []
-    difference = (endSearchWebpageIndex - searchWebpageIndex)
-    i = 0
-    while i <= difference:
-        urlList.append(searchWebpage[searchWebpageIndex + i])
-        i += 1 
     global url
-    url = ''.join(map(str,urlList))
+    url = str("https://weather.com/weather/today/l/" + zipcode) 
     return url
 
 def getWeather():
@@ -215,7 +198,8 @@ def getWeather():
 
 def getTemp():
     #Finding temperature
-    tempIndex = webpage.find(('class="Va(t)"'))
+    tempIndex = webpage.find(('class="today_nowcard-temp"'))
+    tempIndex = webpage.find('class=""', tempIndex)
     tempIndex = webpage.find('>', tempIndex) + 1
     endTempIndex = webpage.find('<', tempIndex) - 1
     temp = []
@@ -226,6 +210,7 @@ def getTemp():
         temp.append (webpage[tempIndex + i])
         i += 1
     tempInt = int((temp[0] + temp[1])) #...then converts those two numbers into integers.
+#unit conversions
     if (tempUnit == tempUnits[0]):#Celcius
         tempInt = round(((tempInt - 32) * (5/9)), 1)
         print("Temperature: " + (str(tempInt)) + "°C")
@@ -238,9 +223,10 @@ def getTemp():
 
 def getWind():
     #Finding windspeed
-    windIndex = webpage.find(('<span data-reactid="457">'))
-    windIndex = webpage.find('>', windIndex) + 1 
-    endWindIndex = webpage.find('<', windIndex) - 1
+    windIndex = webpage.find(('th>Wind'))
+    windIndex = webpage.find('class=""', windIndex)
+    windIndex = webpage.find('>', windIndex) + 1
+    endWindIndex = webpage.find('mph', windIndex) - 1
     difference = endWindIndex - windIndex
     wind = []
     global windInt
@@ -250,34 +236,29 @@ def getWind():
     while i < difference:
         wind.append (webpage[windIndex + i])
         i += 1
-    if (wind[0] == ">"): #this accounts for when the wind is <10, putting a zero in instead of the close tag
-        wind[0] = "0"
-        windInt = int((wind[0] + wind[1] + wind[2]))
+    space = wind.index(' ') #there is a space in the list that separates direction from speed value. Finding where this is.
+    windInt = int(wind[space + 1]) #temperature will always be one index ahead of the space
     if unit == "metric":
         windInt = round((windInt * 1.60934), 0)
         speedUnit = "Km/h"
     else:
         speedUnit = "MPH"
     #Finding wind direction
-    windDirIndex = webpage.find(('<!-- react-text: 458 -->'))
-    windDirIndex = webpage.find('>', windDirIndex) + 2 #+ 2 to compensate for an extra space they added in for some reason
-    endWindDirIndex = webpage.find('<', windDirIndex) - 1
-    difference = endWindDirIndex - windDirIndex
+    windDirIndex = space - space #return index to 0
     windDir = []
     i = 0
-    while i <= difference:
-        windDir.append (webpage[windDirIndex + i])
+    while i <= space:
+        windDir.append (wind[windDirIndex + i])
         i += 1
     direction = ''.join(map(str,windDir))
-    print("Windspeed: " + (str(windInt)) + speedUnit + direction)
+    print("Windspeed: " + (str(windInt)) + speedUnit + " " + direction)
     return windInt
     return direction
    
 def getConditions():   
     #Finding conditions
-    conditionIndex = webpage.find(('description Va(m)'))
-    conditionIndex = webpage.find(('data-reactid="26"'), conditionIndex)
-    conditionIndex = webpage.find('>', conditionIndex) + 1
+    conditionIndex = webpage.find(('class="today_nowcard-phrase"'))
+    conditionIndex = webpage.find(('>'), conditionIndex) + 1
     endIndex = webpage.find('<', conditionIndex) - 1
     webpageConditions = []
     stringLength = endIndex - conditionIndex
@@ -292,7 +273,9 @@ def getConditions():
 
 def getHumidity():
     #Finding humidity
-    humidityIndex = webpage.find(('data-reactid="480"'))
+    humidityIndex = webpage.find('th>Humidity')
+    humidityIndex = webpage.find('class=""', humidityIndex)
+    humidityIndex = webpage.find('span', humidityIndex)
     humidityIndex = webpage.find('>', humidityIndex) + 1
     endHumidityIndex = webpage.find('<', humidityIndex) - 1
     difference = endHumidityIndex - humidityIndex
@@ -306,11 +289,37 @@ def getHumidity():
     print("Humidity: " + (str(humidityPercent) + "%"))
     return humidity
 
+def getDewPoint():
+    dpIndex = webpage.find('th>Dew Point')
+    dpIndex = webpage.find('class=""', dpIndex)
+    dpIndex = webpage.find('>', dpIndex) + 1
+    endDpIndex = webpage.find('<', dpIndex) - 1
+    difference = endDpIndex - dpIndex
+    global dewPointInt
+    dewPoint = []
+    i = 0
+    while i <= difference:
+        dewPoint.append (webpage[dpIndex + i])
+        i += 1
+    dewPoint = ''.join(map(str,dewPoint))
+    dewPointInt = int(dewPoint)
+    if (tempUnit == tempUnits[0]):#Celcius
+        dewPointInt = round(((dewPointInt - 32) * (5/9)), 1)
+        print("Dew Point: " + (str(dewPointInt)) + "°C")
+    elif (tempUnit == tempUnits[1]):#Kelvin...for the nerds.
+        dewPointInt = round(((dewPointInt - 32) * (5/9) + 273.15), 2)
+        print("Dew Point: " + (str(dewPointInt)) + "°K")
+    else: #Fahrenheit
+        print("Dew Point: " + (str(dewPointInt)) + "°F")
+
+    return dewPointInt
+
 def getPressure():
     #Finding barometric pressure
-    pressureIndex = webpage.find(('data-reactid="462"'))
+    pressureIndex = webpage.find('th>Pressure')
+    pressureIndex = webpage.find('class=""', pressureIndex)
     pressureIndex = webpage.find('>', pressureIndex) + 1
-    endPressureIndex = webpage.find('inches', pressureIndex) - 1
+    endPressureIndex = webpage.find('in', pressureIndex) - 1
     difference = endPressureIndex - pressureIndex
     global pressure
     pressure = []
@@ -327,53 +336,201 @@ def getPressure():
         print("Barometric pressure: " + (str(pressure)) + " in. Hg")
     return pressure
 
+def getAlerts():
+    alertIndex = webpage.find('class="SevereAlertBar"')
+    if alertIndex == -1:
+        print("Alerts: None")
+    else: 
+        alertIndex = webpage.find('title="', alertIndex)
+        alertIndex = webpage.find('"', alertIndex) + 1
+        endAlertIndex = webpage.find('"', alertIndex) - 1
+        difference = endAlertIndex - alertIndex
+        alert = []
+        i = 0
+        while i <= difference:
+            alert.append (webpage[alertIndex + i])
+            i += 1
+        global activeAlert
+        activeAlert = ''.join(map(str,alert)) 
+        print("Active Alert: " + activeAlert)
+        return activeAlert
+
+ledCurTime = time.time()
+condCurTime = time.time()
+alertCurTime = time.time()
+
 def processLeds():
+    global ledCurTime #reference above global var otherwise, python really wants a local variable defined somewhere in this function for the usage below
+    global condCurTime
+    global alertCurTime
+    difference = time.time() - ledCurTime
+    condDifference = time.time() - condCurTime
+    alertDifference = time.time() - alertCurTime
+#process for temperature
     if tempUnit == "C":
-        if tempInt <= 4.5:     
-            GPIO.output(tempLed, ledOn)
-            time.sleep(3)
-            GPIO.output(tempLed, ledOff)
-            time.sleep(3)
+        if tempInt < 4.5:     
+            if difference < 3:
+                GPIO.output(tempLed, ledOn)
+            if difference >= 3:
+                GPIO.output(tempLed, ledOff)
+            if difference >= 6:
+                ledCurTime = time.time()
+         
+        if tempInt > 4.5 < 12.8:
+            if difference < 2:
+                GPIO.output(tempLed, ledOn)
+            if difference >= 2:
+                GPIO.output(tempLed, ledOff)
+            if difference >= 4:
+                ledCurTime = time.time()
 
-        if tempInt >= 4.5 <= 12.8:
-            GPIO.output(tempLed, ledOn)
-            time.sleep(2)
-            GPIO.output(tempLed, ledOff)
-            time.sleep(2)
-
-        if tempInt >= 12.8 <= 21.1:
+        if tempInt > 12.8 < 21.1:
             GPIO.output(tempLed, ledOn)
 
-        if tempInt >= 21.1:
-            GPIO.output(tempLed, ledOn)
-            time.sleep(1)
-            GPIO.output(tempLed, ledOff)
-            time.sleep(0.75)
+        if tempInt > 21.1:
+            if difference < 1:
+                GPIO.output(tempLed, ledOn)
+            if difference >= 1:
+                GPIO.output(tempLed, ledOff)
+            if difference >= 2:
+                #global ledCurTime
+                ledCurTime = time.time()
 
     if tempUnit == "F":
         if tempInt < 40:
-           GPIO.output(tempLed, ledOn)
-           time.sleep(3)
-           GPIO.output(tempLed, ledOff)
-           time.sleep(3)
+            if difference < 3:
+                GPIO.output(tempLed, ledOn)
+            if difference >= 3:
+                GPIO.output(tempLed, ledOff)
+            if difference >= 6: 
+                ledCurTime = time.time()
 
         if tempInt > 40 < 55:
-            GPIO.output(tempLed, ledOn) 
-            time.sleep(2)
-            GPIO.output(tempLed, ledOff)
-            time.sleep(2)
+            if difference < 2:
+                GPIO.output(tempLed, ledOn)
+            if difference >= 2:
+                GPIO.output(tempLed, ledOff)
+            if difference >= 4:
+                ledCurTime = time.time()
         
         if tempInt > 55 < 70:
             GPIO.output(tempLed, ledOn)
         
-        if tempInt >= 70:
-           GPIO.output(tempLed, ledOn)
-           time.sleep(1)
-           GPIO.output(tempLed, ledOff)
-           time.sleep(1)
+        if tempInt > 70:
+            if difference < 1:
+                GPIO.output(tempLed, ledOn)
+            if difference >= 1:
+                GPIO.output(tempLed, ledOff)
+            if difference >= 2:
+                ledCurTime = time.time()
+    
+    if tempUnit == "K":
+        if tempInt < 277.594:
+            if difference < 3:
+                GPIO.output(tempLed, ledOn)
+            if difference >= 3:
+                GPIO.output(tempLed, ledOff)
+            if difference >= 6: 
+                ledCurTime = time.time()
 
-curTime = time.time()
+        if tempInt > 277.594 < 285.928:
+            if difference < 2:
+                GPIO.output(tempLed, ledOn)
+            if difference >= 2:
+                GPIO.output(tempLed, ledOff)
+            if difference >= 4:
+                ledCurTime = time.time()
+        
+        if tempInt > 285.928 < 294.261:
+            GPIO.output(tempLed, ledOn)
+        
+        if tempInt > 294.261:
+            if difference < 1:
+                GPIO.output(tempLed, ledOn)
+            if difference >= 1:
+                GPIO.output(tempLed, ledOff)
+            if difference >= 2:
+                ledCurTime = time.time()
+
+#process for conditions incl winter
+    possibleConditions = ["Sunny", "Mostly Sunny", "Fair", "Cloudy", "Overcast", "Showers", "Light Rain", "Rain", "Thunderstorm", "Light Snow", "Snow Shower", "Snow", "Sleet", "Freezing Rain", "Ice"]
+
+    if currentConditions in possibleConditions:
+        conditionIndex = possibleConditions.index(currentConditions)
+        if conditionIndex <= 2: #sunny, etc
+            GPIO.output(conditionLed, ledOn)
+        if conditionIndex >= 3 <= 4: #cloudy
+            if condDifference < 1:
+                GPIO.output(conditionLed, ledOn)
+            if condDifference >= 1:
+                GPIO.output(conditionLed, ledOff)
+            if condDifference >= 2:
+                condCurTime = time.time()
+        if conditionIndex >= 5 <= 7: #water is falling from the sky
+            if condDifference < 2:
+                GPIO.output(conditionLed, ledOn)
+            if condDifference >= 2:
+                GPIO.output(conditionLed, ledOff)
+            if condDifference >= 4:
+                condCurTime = time.time()
+        if conditionIndex == 8: #water is falling from the sky, likely at a high rate and with electrostaic discharges
+            if condDifference < 3:
+                GPIO.output(conditionLed, ledOn)
+            if condDifference >= 3:
+                GPIO.output(conditionLed, ledOff)
+            if condDifference >= 6:
+                condCurTime = time.time()
+        if conditionIndex >= 9 <= 11: #snowing!
+            GPIO.output(winterLed, ledOn)
+        else:
+            GPIO.output(winterLed, ledOff)
+        if conditionIndex >= 12: #icing or etc. terrible winter weather
+            if condDifference < 1:
+                GPIO.output(winterLed, ledOn)
+            if condDifference >= 1:
+                GPIO.output(winterLed, ledOff)
+            if condDifference >= 1:
+                condCurTime = time.time()
+    else:
+        print("Condition not supported, yell at whomever wrote this program.")
+        print(currentConditions)
+
+#process alerts
+    possibleAlerts = ["Watch", "Advisory", "Warning"]
+    
+    if "None" in activeAlert:
+        GPIO.output(alertLed, ledOff)
+    
+    if "Watch" in activeAlert:
+        alertIndex = 0
+
+    if "Advisory" in activeAlert:
+        alertIndex = 1
+    
+    if "Warning" in activeAlert:
+        alertIndex = 2
+
+    if alertIndex == 0:
+        if alertDifference < 1:
+            GPIO.output(alertLed, ledOn)
+        if alertDifference >= 1:
+            GPIO.output(alertLed, ledOff)
+        if alertDifference >= 1:
+            alertCurTime = time.time()
+    if alertIndex == 1:
+        GPIO.output(alertLed, ledOn)
+    if alertIndex == 2:
+        if alertDifference < 0.5:
+            GPIO.output(alertLed, ledOn)
+        if alertDifference >= 0.5:
+            GPIO.output(alertLed, ledOff)
+        if alertDifference >= 0.5:
+            alertCurTime = time.time()
+    #else:
+    #    GPIO.output(alertLed, ledOff)
+
 firstRun = 0
+curTime = time.time() 
 
 while True:     
     if firstRun == 0:
@@ -383,23 +540,27 @@ while True:
         buildUrl()
         getTime()
         getWeather()
+        getAlerts()
         getTemp()
         getWind()
         getConditions()
+        getDewPoint()
         getHumidity()
         getPressure()
         curTime = time.time()
 
-    if time.time() - curTime >= 60:  
+    if time.time() - curTime >= 10:  
         print("Refreshing Data...")
         print("##############################")
         getSettings()
         buildUrl()
         getTime()
         getWeather()
+        getAlerts()
         getTemp()
         getWind()
         getConditions()
+        getDewPoint()
         getHumidity()
         getPressure()        
         curTime = time.time()
