@@ -38,6 +38,8 @@ LCD_CMD_CLEAR = 0x01
 LCD_CMD_HOME = 0x02   # goes to position 0 in line 0
 LCD_CMD_POSITION = 0x80  # Add this to DDRAM address
 
+# Set ButtonPin's mode as input with the internal pullup 
+
 #Open I2C interface
 #bus = smbus.SMBus(0)  # Rev 1 Pi uses 0
 bus = smbus.SMBus(1) # Rev 2 Pi uses 1
@@ -93,7 +95,7 @@ def lcd_string(message,line):
 # Positions the cursor so that the next write to the LCD
 # appears at a specific row & column, 0-org'd
 def lcd_xy(col, row):
-    lcd_byte(LCD_CMD_POSITION+col+(64*row), LCD_CMD)
+        lcd_byte(LCD_CMD_POSITION+col+(64*row), LCD_CMD)
 
 # Begins writing a string to the LCD at the current cursor
 # position. It doesn't concern itself with whether the cursor
@@ -101,19 +103,30 @@ def lcd_xy(col, row):
 def lcd_msg(msg_string):
     for i in range(0, len(msg_string)):
         lcd_byte(ord(msg_string[i]), LCD_CHR)
-longString = "very long string that will not fit on screen."
-length = len(longString)
-index = range(0, 16)
 
-i = 0
-myString = []
-
-#for i in index:
-#    myString.append(longString[i])
-#    print (myString[i])
-#    i += 1
+def buildString():
+    myString = "Hello world, long string here"
+    stringLength = len(myString)
+    i = 0
+    startIndex = 0
+    endIndex = 15
+    newString = []
+    for index in range(startIndex, endIndex):
+        newString.append(myString[i]) 
+        print(newString[i])
+        i += 1
+        startIndex += 1
+        endIndex += 1
+        time.sleep(0.1)
+        if endIndex > stringLength:
+            break #leave loop
+#if stringLength > 16:
+    
 
 while True:
-    #if length >= 20:
-    lcd_string("hello", LCD_LINE_1)
+    buildString()
+    #lcd_init()
+    #lcd_string(myString, LCD_LINE_1)
+    #lcd_string(" (again)", LCD_LINE_2)
+    #print(str(stringLength))
     break
