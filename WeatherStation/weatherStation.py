@@ -224,6 +224,7 @@ def getTemp():
     temp = []
     difference = endTempIndex - tempIndex
     global tempInt
+    global tempString
     i = 0 
     while i <= difference: #puts values into array... 
         temp.append (webpage[tempIndex + i])
@@ -232,13 +233,17 @@ def getTemp():
 #unit conversions
     if (tempUnit == tempUnits[0]):#Celcius
         tempInt = round(((tempInt - 32) * (5/9)), 1)
-        print("Temperature: " + (str(tempInt)) + "°C")
+        tempString = ("Temp: " + (str(tempInt)) + "C")
+        print(tempString)
     elif (tempUnit == tempUnits[1]):#Kelvin...for the nerds.
         tempInt = round(((tempInt - 32) * (5/9) + 273.15), 2)
-        print("Temperature: " + (str(tempInt)) + "°K")
+        tempString = ("Temp: " + (str(tempInt)) + "K")
+        print(tempString)
     else: #Fahrenheit
-        print("Temperature: " + (str(tempInt)) + "°F")
+        tempString = ("Temp: " + (str(tempInt)) + "F")
+        print(tempString)
     return tempInt
+    return tempString
 
 def getWind():
     #Finding windspeed
@@ -250,6 +255,7 @@ def getWind():
     wind = []
     global windInt
     global direction
+    global windString
     windInt = 0
     i = 0
     while i < difference:
@@ -275,12 +281,16 @@ def getWind():
             windDir.append (wind[windDirIndex + i])
             i += 1
         direction = ''.join(map(str,windDir))
-    print("Windspeed: " + (str(windInt)) + speedUnit + " " + direction)
+    windString = ("Wind: " + (str(windInt)) + speedUnit + " " + direction)
+    print(windString)
     return windInt
     return direction
+    return windString
    
 def getConditions():   
     #Finding conditions
+    global currentConditions
+    global conditionString
     conditionIndex = webpage.find(('class="today_nowcard-phrase"'))
     conditionIndex = webpage.find(('>'), conditionIndex) + 1
     endIndex = webpage.find('<', conditionIndex) - 1
@@ -290,36 +300,37 @@ def getConditions():
     while i <= stringLength:
         webpageConditions.append (webpage[conditionIndex + i])
         i += 1
-    global currentConditions
     currentConditions = ''.join(map(str,webpageConditions))#turning the webpageConditions list into string
-    print("Conditions: " + currentConditions)
+    conditionString = ("Conditions: " + currentConditions)
+    print(conditionString)
     return currentConditions
+    return conditionString
 
 def getHumidity():
     #Finding humidity
+    global humidityString
     humidityIndex = webpage.find('th>Humidity')
     humidityIndex = webpage.find('class=""', humidityIndex)
     humidityIndex = webpage.find('span', humidityIndex)
     humidityIndex = webpage.find('>', humidityIndex) + 1
     endHumidityIndex = webpage.find('<', humidityIndex) - 1
     difference = endHumidityIndex - humidityIndex
-    global humidity
     humidity = []
     i = 0
     while i <= difference:
         humidity.append (webpage[humidityIndex + i])
         i += 1
     humidityPercent = int((humidity[0] + humidity[1]))
-    print("Humidity: " + (str(humidityPercent) + "%"))
-    return humidity
+    humidityString = ("Humidity: " + (str(humidityPercent) + "%"))
+    print(humidityString)
 
 def getDewPoint():
+    global dpString
     dpIndex = webpage.find('th>Dew Point')
     dpIndex = webpage.find('class=""', dpIndex)
     dpIndex = webpage.find('>', dpIndex) + 1
     endDpIndex = webpage.find('<', dpIndex) - 1
-    difference = endDpIndex - dpIndex
-    global dewPointInt
+    difference = endDpIndex - dpIndex 
     dewPoint = []
     i = 0
     while i <= difference:
@@ -329,23 +340,25 @@ def getDewPoint():
     dewPointInt = int(dewPoint)
     if (tempUnit == tempUnits[0]):#Celcius
         dewPointInt = round(((dewPointInt - 32) * (5/9)), 1)
-        print("Dew Point: " + (str(dewPointInt)) + "°C")
+        dpString = ("Dew Point: " + (str(dewPointInt)) + "°C")
+        print(dpString)
     elif (tempUnit == tempUnits[1]):#Kelvin...for the nerds.
         dewPointInt = round(((dewPointInt - 32) * (5/9) + 273.15), 2)
-        print("Dew Point: " + (str(dewPointInt)) + "°K")
+        dpString = ("Dew Point: " + (str(dewPointInt)) + "°K")
+        print(dpString)
     else: #Fahrenheit
-        print("Dew Point: " + (str(dewPointInt)) + "°F")
-
-    return dewPointInt
+        dpString = ("Dew Point: " + (str(dewPointInt)) + "°F")
+        print(dpString)
+    return dpString
 
 def getPressure():
     #Finding barometric pressure
+    global pressureString
     pressureIndex = webpage.find('th>Pressure')
     pressureIndex = webpage.find('class=""', pressureIndex)
     pressureIndex = webpage.find('>', pressureIndex) + 1
     endPressureIndex = webpage.find('in', pressureIndex) - 1
     difference = endPressureIndex - pressureIndex
-    global pressure
     pressure = []
     i = 0
     while i <= difference:
@@ -355,17 +368,21 @@ def getPressure():
     pressure = float(pressure) #...then to an float
     if pressureUnit == pressureUnits[0]:
         pressure = round((pressure * 33.8639), 1)
-        print("Barometric pressure: " + (str(pressure)) + " mbar")
+        pressureString = ("Barometric pressure: " + (str(pressure)) + " mbar")
+        print(pressureString)
     else:
-        print("Barometric pressure: " + (str(pressure)) + " in. Hg")
-    return pressure
+        pressureString = ("Barometric pressure: " + (str(pressure)) + " in. Hg")
+        print(pressureString)
+    return pressureString
 
-def getAlerts():
+def getAlerts(): 
+    global activeAlert
+    global alertString
     alertIndex = webpage.find('class="SevereAlertBar"')
-    global activeAlert 
-    if alertIndex == -1:
+    if alertIndex == -1: #no response condition
         activeAlert = "None" 
-        print("Alerts: " + activeAlert)
+        alertString = ("Alerts: " + activeAlert)
+        print(alertString)
     else: 
         alertIndex = webpage.find('title="', alertIndex)
         alertIndex = webpage.find('"', alertIndex) + 1
@@ -377,8 +394,12 @@ def getAlerts():
             alert.append (webpage[alertIndex + i])
             i += 1
         activeAlert = ''.join(map(str,alert)) 
-        print("Active Alert: " + activeAlert)
+        alertString = ("Active Alert: " + activeAlert)
+        print(alertString)
+    return alertString
     return activeAlert
+
+#print(alertString)
 
 ledCurTime = time.time()
 condCurTime = time.time()
@@ -478,38 +499,38 @@ def processLeds():
                 ledCurTime = time.time()
 
 #process for conditions incl winter
-    possibleConditions = ["Sunny", "Mostly Sunny", "Partly Cloudy", "Cloudy", "Mostly Cloudy", "Overcast", "Showers", "Light Rain", "Rain", "Thunderstorm", "Light Snow", "Snow Shower", "Snow", "Sleet", "Freezing Rain", "Ice"]
+    possibleConditions = ["Sunny", "Mostly Sunny", "Partly Cloudy", "Fair", "Cloudy", "Mostly Cloudy", "Overcast", "Showers", "Light Rain", "Rain", "Heavy Rain", "Thunderstorm", "Light Snow", "Snow Shower", "Snow", "Sleet", "Freezing Rain", "Ice"]
 
     if currentConditions in possibleConditions:
         conditionIndex = possibleConditions.index(currentConditions)
-        if conditionIndex <= 2: #sunny, etc
+        if conditionIndex <= 3: #sunny, etc
             GPIO.output(conditionLed, ledOn)
-        if conditionIndex >= 3 <= 5: #cloudy
+        if conditionIndex >= 4 <= 6: #cloudy
             if condDifference < 1:
                 GPIO.output(conditionLed, ledOn)
             if condDifference >= 1:
                 GPIO.output(conditionLed, ledOff)
             if condDifference >= 2:
                 condCurTime = time.time()
-        if conditionIndex >= 6 <= 8: #water is falling from the sky
+        if conditionIndex >= 7 <= 10: #water is falling from the sky
             if condDifference < 2:
                 GPIO.output(conditionLed, ledOn)
             if condDifference >= 2:
                 GPIO.output(conditionLed, ledOff)
             if condDifference >= 4:
                 condCurTime = time.time()
-        if conditionIndex == 9: #water is falling from the sky, likely at a high rate and with electrostaic discharges
+        if conditionIndex == 11: #water is falling from the sky, likely at a high rate and with electrostaic discharges
             if condDifference < 3:
                 GPIO.output(conditionLed, ledOn)
             if condDifference >= 3:
                 GPIO.output(conditionLed, ledOff)
             if condDifference >= 6:
                 condCurTime = time.time()
-        if conditionIndex >= 10 <= 12: #snowing!
+        if conditionIndex >= 12 <= 14: #snowing!
             GPIO.output(winterLed, ledOn)
         else:
             GPIO.output(winterLed, ledOff)
-        if conditionIndex >= 13: #icing or etc. terrible winter weather
+        if conditionIndex >= 15: #icing or etc. terrible winter weather
             if condDifference < 1:
                 GPIO.output(winterLed, ledOn)
             if condDifference >= 1:
@@ -553,8 +574,25 @@ def processLeds():
         if alertDifference >= 0.5:
             alertCurTime = time.time()
 
+lcd_init()
+#print(alertString)
+
+dataPoints = [alertString, tempString, windString, conditionString, dpString, humidityString, pressureString]
+
+i = 0
+
+def processLcd():
+    lcd_string(dataPoints[i], LCD_LINE_1)
+    i += 1
+    lcd_string(dataPoints[i], LCD_LINE_2)
+    i += 1
+    if i > len(dataPoints):
+        i = 0
+        lcd_init()
+
 firstRun = 0
-curTime = time.time() 
+curTime = time.time()
+lcdCurTime = time.time()
 
 while True:     
     if firstRun == 0:
@@ -576,6 +614,8 @@ while True:
     if time.time() - curTime >= refreshRate:  
         print("Refreshing Data...")
         print("##############################")
+        lcd_init()
+        lcd_string("Refreshing Data", LCD_LINE_1)
         getSettings()
         buildUrl()
         getTime()
@@ -590,3 +630,6 @@ while True:
         curTime = time.time()
 
     processLeds()
+    if (time.time() - lcdCurTime >= 5): 
+        processLcd()
+        lcdCurTime = time.time()
