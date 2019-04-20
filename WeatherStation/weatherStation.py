@@ -207,13 +207,16 @@ def getWeather():
             break
 
     global webpage
+    global zipMsg
     webpage = (str(webRead(url)))
     #Save to file
     file = open('webpageout.txt', 'w')
     file.write(str(webpage))
     file.close()
-    print("Current weather for " + zipcode + ":")
+    zipMsg = ("Current weather for " + zipcode)
+    print(zipMsg)
     return webpage
+    return zipMsg
 
 def getTemp():
     #Finding temperature
@@ -381,7 +384,7 @@ def getAlerts():
     alertIndex = webpage.find('class="SevereAlertBar"')
     if alertIndex == -1: #no response condition
         activeAlert = "None" 
-        alertString = ("Alerts: " + activeAlert)
+        alertString = ("No alerts")
         print(alertString)
     else: 
         alertIndex = webpage.find('title="', alertIndex)
@@ -394,7 +397,7 @@ def getAlerts():
             alert.append (webpage[alertIndex + i])
             i += 1
         activeAlert = ''.join(map(str,alert)) 
-        alertString = ("Active Alert: " + activeAlert)
+        alertString = ("Alert: " + activeAlert)
         print(alertString)
     return alertString
     return activeAlert
@@ -499,7 +502,7 @@ def processLeds():
                 ledCurTime = time.time()
 
 #process for conditions incl winter
-    possibleConditions = ["Sunny", "Mostly Sunny", "Partly Cloudy", "Fair", "Cloudy", "Mostly Cloudy", "Overcast", "Showers", "Light Rain", "Rain", "Heavy Rain", "Thunderstorm", "Light Snow", "Snow Shower", "Snow", "Sleet", "Freezing Rain", "Ice"]
+    possibleConditions = ["Sunny", "Mostly Sunny", "Partly Cloudy", "Fair", "Cloudy", "Mostly Cloudy", "Overcast", "Showers", "Light Rain", "Rain", "Rain Shower", "Heavy Rain", "Thunderstorm", "Light Snow", "Snow Shower", "Snow", "Sleet", "Freezing Rain", "Ice"]
 
     if currentConditions in possibleConditions:
         conditionIndex = possibleConditions.index(currentConditions)
@@ -512,25 +515,25 @@ def processLeds():
                 GPIO.output(conditionLed, ledOff)
             if condDifference >= 2:
                 condCurTime = time.time()
-        if conditionIndex >= 7 <= 10: #water is falling from the sky
-            if condDifference < 2:
+        if conditionIndex >= 7 <= 11: #rain of some sort 
+            if condDifference < 2:       
                 GPIO.output(conditionLed, ledOn)
-            if condDifference >= 2:
+            if condDifference >= 2:    
                 GPIO.output(conditionLed, ledOff)
-            if condDifference >= 4:
+            if condDifference >= 4:          
                 condCurTime = time.time()
-        if conditionIndex == 11: #water is falling from the sky, likely at a high rate and with electrostaic discharges
-            if condDifference < 3:
-                GPIO.output(conditionLed, ledOn)
-            if condDifference >= 3:
-                GPIO.output(conditionLed, ledOff)
-            if condDifference >= 6:
-                condCurTime = time.time()
-        if conditionIndex >= 12 <= 14: #snowing!
+        if conditionIndex == 12: #water is falling from the sky, likely at a high rate and with electrostaic discharges
+           if condDifference < 3:
+               GPIO.output(conditionLed, ledOn)
+           if condDifference >= 3:
+               GPIO.output(conditionLed, ledOff)
+           if condDifference >= 6:
+               condCurTime = time.time()
+        if conditionIndex >= 13 <= 15: #snowing!
             GPIO.output(winterLed, ledOn)
         else:
             GPIO.output(winterLed, ledOff)
-        if conditionIndex >= 15: #icing or etc. terrible winter weather
+        if conditionIndex >= 16: #icing or etc. terrible winter weather
             if condDifference < 1:
                 GPIO.output(winterLed, ledOn)
             if condDifference >= 1:
@@ -540,6 +543,8 @@ def processLeds():
     else:
         print("Condition not supported, yell at whomever wrote this program.")
         print(currentConditions)
+        lcd_string("Program error", LCD_LINE_1)
+        lcd_string("", LCD_LINE_2)
 
 #process alerts
     possibleAlerts = ["None", "Watch", "Advisory", "Warning"]
@@ -552,6 +557,9 @@ def processLeds():
         alertIndex = 1
 
     if "Advisory" in activeAlert:
+        alertIndex = 2
+
+    if "Alert" in activeAlert:
         alertIndex = 2
     
     if "Warning" in activeAlert:
@@ -591,24 +599,24 @@ def processLcd():
     global l
     global topLcdCurTime
     global bottomLcdCurTime
-    dataPoints = [alertString, tempString, windString, conditionString, dpString, humidityString, pressureString]
+    dataPoints = [zipMsg, alertString, tempString, windString, conditionString, dpString, humidityString, pressureString]
     topString = dataPoints[i]
     bottomString = dataPoints[j]
     newTopString = ""
     newBottomString = ""
     startIndex = 0
-    endIndex = 15
+    endIndex = 16
 
-    if len(topString) > 15:
+    if len(topString) > 16:
         while endIndex <= len(topString):
-            while time.time() - topLcdCurTime >= 1:
+            while time.time() - topLcdCurTime >= 0.1:
                 newTopString = topString[startIndex:endIndex]
                 startIndex += 1
                 endIndex += 1
                 lcd_string(newTopString, LCD_LINE_1)
                 topLcdCurTime = time.time()
         startIndex = 0
-        endIndex = 15 #reset
+        endIndex = 16 #reset
         if i >= (len(dataPoints) - 1):
             i = 0
         else:
@@ -620,28 +628,30 @@ def processLcd():
         else:
             i += 1
 
-    if len(bottomString) > 15:
+    if len(bottomString) > 16:
         while endIndex <= len(bottomString):
-            while time.time() - bottomLcdCurTime >= 1:
+            while time.time() - bottomLcdCurTime >= 0.1:
                 newBottomString = bottomString[startIndex:endIndex]
                 startIndex += 1
                 endIndex += 1
                 lcd_string(newBottomString, LCD_LINE_2)
                 bottomLcdCurTime = time.time()
         startIndex = 0
-        endIndex = 15 #reset
+        endIndex = 16 #reset
         if j >= (len(dataPoints) - 1):
             j = 0
         else:
             j += 1
     else:
         lcd_string(bottomString, LCD_LINE_2)
-        if j >= (len(dataPoints) - 1):
+        if j >= (len(dataPoints) - 2):
             j = 0
         else:
             j += 1
         #if j >= len(bottomString):
         #    j = 0
+    if i == j:
+        j += 1
 
 firstRun = 0
 curTime = time.time()
@@ -682,7 +692,7 @@ while True:
         getPressure()        
         curTime = time.time()
 
-    processLeds()
-    if (time.time() - lcdCurTime >= 2): 
+    processLeds() #process leds each time this loop runs
+    if (time.time() - lcdCurTime >= 5): #same thing here for the lcd
         processLcd()
         lcdCurTime = time.time()

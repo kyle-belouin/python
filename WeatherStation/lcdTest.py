@@ -144,4 +144,4 @@ while True:
     #lcd_string(myString, LCD_LINE_1)
     #lcd_string(" (again)", LCD_LINE_2)
     #print(str(stringLength))
-    break
+    time.sleep(1)
