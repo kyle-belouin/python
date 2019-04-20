@@ -105,21 +105,36 @@ def lcd_msg(msg_string):
         lcd_byte(ord(msg_string[i]), LCD_CHR)
 
 def buildString():
+    lcd_init()
     myString = "Hello world, long string here"
     stringLength = len(myString)
     i = 0
     startIndex = 0
     endIndex = 15
     newString = []
-    for index in range(startIndex, endIndex):
-        newString.append(myString[i]) 
-        print(newString[i])
-        i += 1
+    lcd_init()
+    while endIndex <= stringLength:
+        newString = myString[startIndex:endIndex]
         startIndex += 1
         endIndex += 1
-        time.sleep(0.1)
-        if endIndex > stringLength:
-            break #leave loop
+        print(str(newString))
+        lcd_string(newString, LCD_LINE_1)
+        time.sleep(0.2)
+    #while endIndex <= stringLength:
+    #    lcd_string(myString, LCD_LINE_1)
+    #    lcd_xy(0, startIndex)
+    #    startIndex += 1
+    #    endIndex += 1
+#        time.sleep(2)
+    #if endIndex > stringLength:
+        #break #leave loop
+
+
+
+
+
+
+
 #if stringLength > 16:
     
 

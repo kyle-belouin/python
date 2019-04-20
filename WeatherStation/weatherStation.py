@@ -340,14 +340,14 @@ def getDewPoint():
     dewPointInt = int(dewPoint)
     if (tempUnit == tempUnits[0]):#Celcius
         dewPointInt = round(((dewPointInt - 32) * (5/9)), 1)
-        dpString = ("Dew Point: " + (str(dewPointInt)) + "°C")
+        dpString = ("Dew Point: " + (str(dewPointInt)) + "C")
         print(dpString)
     elif (tempUnit == tempUnits[1]):#Kelvin...for the nerds.
         dewPointInt = round(((dewPointInt - 32) * (5/9) + 273.15), 2)
-        dpString = ("Dew Point: " + (str(dewPointInt)) + "°K")
+        dpString = ("Dew Point: " + (str(dewPointInt)) + "K")
         print(dpString)
     else: #Fahrenheit
-        dpString = ("Dew Point: " + (str(dewPointInt)) + "°F")
+        dpString = ("Dew Point: " + (str(dewPointInt)) + "F")
         print(dpString)
     return dpString
 
@@ -368,10 +368,10 @@ def getPressure():
     pressure = float(pressure) #...then to an float
     if pressureUnit == pressureUnits[0]:
         pressure = round((pressure * 33.8639), 1)
-        pressureString = ("Barometric pressure: " + (str(pressure)) + " mbar")
+        pressureString = ("Pressure: " + (str(pressure)) + "mbar")
         print(pressureString)
     else:
-        pressureString = ("Barometric pressure: " + (str(pressure)) + " in. Hg")
+        pressureString = ("Pressure: " + (str(pressure)) + "in. Hg")
         print(pressureString)
     return pressureString
 
@@ -577,18 +577,71 @@ def processLeds():
 lcd_init()
 #print(alertString)
 
-dataPoints = [alertString, tempString, windString, conditionString, dpString, humidityString, pressureString]
-
 i = 0
+j = 1
+k = 0
+l = 15
+topLcdCurTime = time.time()
+bottomLcdCurTime = time.time()
 
 def processLcd():
-    lcd_string(dataPoints[i], LCD_LINE_1)
-    i += 1
-    lcd_string(dataPoints[i], LCD_LINE_2)
-    i += 1
-    if i > len(dataPoints):
-        i = 0
-        lcd_init()
+    global i
+    global j
+    global k
+    global l
+    global topLcdCurTime
+    global bottomLcdCurTime
+    dataPoints = [alertString, tempString, windString, conditionString, dpString, humidityString, pressureString]
+    topString = dataPoints[i]
+    bottomString = dataPoints[j]
+    newTopString = ""
+    newBottomString = ""
+    startIndex = 0
+    endIndex = 15
+
+    if len(topString) > 15:
+        while endIndex <= len(topString):
+            while time.time() - topLcdCurTime >= 1:
+                newTopString = topString[startIndex:endIndex]
+                startIndex += 1
+                endIndex += 1
+                lcd_string(newTopString, LCD_LINE_1)
+                topLcdCurTime = time.time()
+        startIndex = 0
+        endIndex = 15 #reset
+        if i >= (len(dataPoints) - 1):
+            i = 0
+        else:
+            i += 1
+    else:
+        lcd_string(topString, LCD_LINE_1)
+        if i >= (len(dataPoints) - 1):
+            i = 0
+        else:
+            i += 1
+
+    if len(bottomString) > 15:
+        while endIndex <= len(bottomString):
+            while time.time() - bottomLcdCurTime >= 1:
+                newBottomString = bottomString[startIndex:endIndex]
+                startIndex += 1
+                endIndex += 1
+                lcd_string(newBottomString, LCD_LINE_2)
+                bottomLcdCurTime = time.time()
+        startIndex = 0
+        endIndex = 15 #reset
+        if j >= (len(dataPoints) - 1):
+            j = 0
+        else:
+            j += 1
+    else:
+        lcd_string(bottomString, LCD_LINE_2)
+        if j >= (len(dataPoints) - 1):
+            j = 0
+        else:
+            j += 1
+        #if j >= len(bottomString):
+        #    j = 0
 
 firstRun = 0
 curTime = time.time()
@@ -630,6 +683,6 @@ while True:
         curTime = time.time()
 
     processLeds()
-    if (time.time() - lcdCurTime >= 5): 
+    if (time.time() - lcdCurTime >= 2): 
         processLcd()
         lcdCurTime = time.time()
