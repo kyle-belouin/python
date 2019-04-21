@@ -11,20 +11,31 @@ import os
 import random
 import RPi.GPIO as GPIO
 
+#GPIO assignments
 #LED assignments
 tempLed = 17 #green
 winterLed = 18 #blue
 alertLed = 19 #red
 conditionLed = 20 #white
+#buttons
+leftPin = 21
+rightPin = 22
+upPin = 23
+downPin = 24
+buttons = [21, 22, 23, 24]
 
 ledList = [tempLed, winterLed, alertLed, conditionLed]
 ledOn = GPIO.LOW
 ledOff = GPIO.HIGH
 
+#ledSetup
 GPIO.setmode(GPIO.BCM)
 GPIO.setup(ledList, GPIO.OUT)
 GPIO.output(ledList, GPIO.HIGH)
 GPIO.setwarnings(False)
+
+#buttonSetup
+GPIO.setup(buttons, GPIO.IN, pull_up_down = GPIO.PUD_UP)
 
 #LCD pin assignments, constants, etc
 I2C_ADDR  = 0x27 # I2C device address
@@ -283,14 +294,14 @@ def getWind():
         while i <= space:
             windDir.append (wind[windDirIndex + i])
             i += 1
-        direction = ''.join(map(str,windDir))
+        direction = ''.join(map(str,windDir)) #string joining discovered here https://www.programiz.com/python-programming/methods/string/join
     windString = ("Wind: " + (str(windInt)) + speedUnit + " " + direction)
     print(windString)
     return windInt
     return direction
     return windString
    
-def getConditions():   
+def getConditions(): 
     #Finding conditions
     global currentConditions
     global conditionString
@@ -508,32 +519,32 @@ def processLeds():
         conditionIndex = possibleConditions.index(currentConditions)
         if conditionIndex <= 3: #sunny, etc
             GPIO.output(conditionLed, ledOn)
-        if conditionIndex >= 4 <= 6: #cloudy
+        elif conditionIndex >= 4 <= 6: #cloudy
             if condDifference < 1:
                 GPIO.output(conditionLed, ledOn)
             if condDifference >= 1:
                 GPIO.output(conditionLed, ledOff)
             if condDifference >= 2:
                 condCurTime = time.time()
-        if conditionIndex >= 7 <= 11: #rain of some sort 
+        elif conditionIndex >= 7 <= 11: #rain of some sort 
             if condDifference < 2:       
                 GPIO.output(conditionLed, ledOn)
             if condDifference >= 2:    
                 GPIO.output(conditionLed, ledOff)
             if condDifference >= 4:          
                 condCurTime = time.time()
-        if conditionIndex == 12: #water is falling from the sky, likely at a high rate and with electrostaic discharges
+        elif conditionIndex == 12: #water is falling from the sky, likely at a high rate and with electrostaic discharges
            if condDifference < 3:
                GPIO.output(conditionLed, ledOn)
            if condDifference >= 3:
                GPIO.output(conditionLed, ledOff)
            if condDifference >= 6:
                condCurTime = time.time()
-        if conditionIndex >= 13 <= 15: #snowing!
+        elif conditionIndex >= 13 <= 15: #snowing!
             GPIO.output(winterLed, ledOn)
-        else:
-            GPIO.output(winterLed, ledOff)
-        if conditionIndex >= 16: #icing or etc. terrible winter weather
+        #else:
+        #    GPIO.output(winterLed, ledOff)
+        elif conditionIndex >= 16: #icing or etc. terrible winter weather
             if condDifference < 1:
                 GPIO.output(winterLed, ledOn)
             if condDifference >= 1:
@@ -607,6 +618,9 @@ def processLcd():
     startIndex = 0
     endIndex = 16
 
+    if (0 == GPIO.input(leftPin) or 0 == GPIO.input(rightPin) or 0 == GPIO.input(upPin) or 0 == GPIO.input(downPin)): #any button may be pressed here
+        userSetup()
+
     if len(topString) > 16:
         while endIndex <= len(topString):
             while time.time() - topLcdCurTime >= 0.1:
@@ -652,6 +666,64 @@ def processLcd():
         #    j = 0
     if i == j:
         j += 1
+
+def userSetup():
+    lcd_string("Setup Program", LCD_LINE_1)
+    lcd_string("* * * * * * * * * * * *", LCD_LINE_2)
+    time.sleep(1)
+    lcd_init()
+    i = 0
+    j = 1
+    selections = ["Temp Units", "Speed Units", "Pressure Units", "Zip Code", "Refresh Rate"]  
+    while True:
+        selection = selections[i] 
+        lcd_string(selection + " *", LCD_LINE_1)
+        lcd_string(selections[j] + "", LCD_LINE_2)
+        if (0 == GPIO.input(downPin)):
+            if i >= (len(selections) - 1):
+                i = 0
+            else:
+                i += 1
+            if j >= (len(selections) - 1):
+                j = 0
+            else:
+                j += 1
+        if (0 == GPIO.input(upPin)):
+            if i <= 0:
+                i = len(selections) - 1
+            else:
+                i -= 1
+            if j <= 0:
+                j = len(selections) - 1
+            else:
+                j -= 1
+        if (0 == GPIO.input(rightPin)):
+            lcd_init()
+            selector = "*"
+            while True:
+                if (selection == selections[0]):
+                    lcd_string("C, K, F", LCD_LINE_1)
+                    lcd_string(selector, LCD_LINE_2)
+                    if (0 == GPIO.input(rightPin)):
+                        lcd_string(selector + "  ", LCD_LINE_2)
+                elif (selection == selections[1]):
+                    lcd_string("Km/H, MPH", LCD_LINE_1)
+                    lcd_string(selector, LCD_LINE_2)
+                    if (0 == GPIO.input(rightPin)):
+                        lcd_string(selector + "  ", LCD_LINE_2)
+                else:
+                    break
+
+
+        curTime = time.time()
+        while (0 == GPIO.input(leftPin) or 0 == GPIO.input(rightPin) or 0 == GPIO.input(upPin) or 0 == GPIO.input(downPin)): #any button may be pressed here
+            elapsedTime = time.time() - curTime  
+            if elapsedTime >= 2: 
+                lcd_string("Exiting setup", LCD_LINE_1)
+                lcd_string("* * * * * * * * * * * *", LCD_LINE_2)
+                time.sleep(1)
+                lcd_init()
+                return
 
 firstRun = 0
 curTime = time.time()
