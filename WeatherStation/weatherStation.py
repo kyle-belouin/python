@@ -201,6 +201,8 @@ def buildUrl(): #This searches for a zip and then navigates to a corresponding w
     return url
 
 def getWeather():
+    lcd_init()
+    lcd_string("Gathering data...", LCD_LINE_1)
     i = 0 #little loading animation with the lights
     while True: 
         GPIO.output(ledList[i], ledOn)
@@ -219,6 +221,7 @@ def getWeather():
 
     global webpage
     global zipMsg
+    lcd_string("Processing data...", LCD_LINE_1)
     webpage = (str(webRead(url)))
     #Save to file
     file = open('webpageout.txt', 'w')
@@ -513,38 +516,38 @@ def processLeds():
                 ledCurTime = time.time()
 
 #process for conditions incl winter
-    possibleConditions = ["Sunny", "Mostly Sunny", "Partly Cloudy", "Fair", "Cloudy", "Mostly Cloudy", "Overcast", "Showers", "Light Rain", "Rain", "Rain Shower", "Heavy Rain", "Thunderstorm", "Light Snow", "Snow Shower", "Snow", "Sleet", "Freezing Rain", "Ice"]
+    possibleConditions = ["Clear", "Sunny", "Mostly Sunny", "Partly Cloudy", "Fair", "Cloudy", "Mostly Cloudy", "Overcast", "Showers", "Light Rain", "Rain", "Rain Shower", "Heavy Rain", "Thunderstorm", "Light Snow", "Snow Shower", "Snow", "Sleet", "Freezing Rain", "Ice"]
 
     if currentConditions in possibleConditions:
         conditionIndex = possibleConditions.index(currentConditions)
-        if conditionIndex <= 3: #sunny, etc
+        if conditionIndex <= 4: #sunny, etc
             GPIO.output(conditionLed, ledOn)
-        elif conditionIndex >= 4 <= 6: #cloudy
+        elif conditionIndex >= 5 <= 7: #cloudy
             if condDifference < 1:
                 GPIO.output(conditionLed, ledOn)
             if condDifference >= 1:
                 GPIO.output(conditionLed, ledOff)
             if condDifference >= 2:
                 condCurTime = time.time()
-        elif conditionIndex >= 7 <= 11: #rain of some sort 
+        elif conditionIndex >= 8 <= 12: #rain of some sort 
             if condDifference < 2:       
                 GPIO.output(conditionLed, ledOn)
             if condDifference >= 2:    
                 GPIO.output(conditionLed, ledOff)
             if condDifference >= 4:          
                 condCurTime = time.time()
-        elif conditionIndex == 12: #water is falling from the sky, likely at a high rate and with electrostaic discharges
+        elif conditionIndex == 13: #water is falling from the sky, likely at a high rate and with electrostaic discharges
            if condDifference < 3:
                GPIO.output(conditionLed, ledOn)
            if condDifference >= 3:
                GPIO.output(conditionLed, ledOff)
            if condDifference >= 6:
                condCurTime = time.time()
-        elif conditionIndex >= 13 <= 15: #snowing!
+        elif conditionIndex >= 14 <= 16: #snowing!
             GPIO.output(winterLed, ledOn)
         #else:
         #    GPIO.output(winterLed, ledOff)
-        elif conditionIndex >= 16: #icing or etc. terrible winter weather
+        elif conditionIndex >= 17: #icing or etc. terrible winter weather
             if condDifference < 1:
                 GPIO.output(winterLed, ledOn)
             if condDifference >= 1:
@@ -679,7 +682,7 @@ def userSetup():
         selection = selections[i] 
         lcd_string(selection + " *", LCD_LINE_1)
         lcd_string(selections[j] + "", LCD_LINE_2)
-        if (0 == GPIO.input(downPin)):
+        if (0 == GPIO.input(downPin)): #what follows is the logic for "scrolling" through the different options
             if i >= (len(selections) - 1):
                 i = 0
             else:
@@ -698,22 +701,136 @@ def userSetup():
             else:
                 j -= 1
         if (0 == GPIO.input(rightPin)):
-            lcd_init()
+            lcd_init() #we're moving to the interior setup pages. Clear the lcd
             selector = "*"
+            k = 0 #k will be used for the selector below
             while True:
+                if 0 == GPIO.input(leftPin): #leave this menu if we press left 
+                   break
                 if (selection == selections[0]):
                     lcd_string("C, K, F", LCD_LINE_1)
                     lcd_string(selector, LCD_LINE_2)
+                    if 0 == GPIO.input(downPin): #enter selection
+                        time.sleep(0.15) #want to ensure we don't debounce
+                        with open('settings.cfg', 'r') as file:
+                            line = file.readlines()
+                        line[2] = (str(k) + '\n')
+                        for a, l in enumerate(line): #gets how many lines are in the file. Using 'a' is arbitrary
+                            pass
+                        x = 0 
+                        with open('settings.cfg', 'w') as file:
+                            while x <= a: #we have to rebuild the whole file, so writing it back line by line with the change we want
+                                file.writelines(line[x])
+                                x += 1
+                        file.close()
+                        lcd_string("Saved!", LCD_LINE_2)
+                        time.sleep(1)
+                        break
                     if (0 == GPIO.input(rightPin)):
-                        lcd_string(selector + "  ", LCD_LINE_2)
-                elif (selection == selections[1]):
+                        k += 1
+                        if k > 2:
+                            selector = "*" #move back to starting position
+                            k = 0
+                        else:
+                            selector = ("   " + selector) #three spaces for the increment
+                            lcd_string(selector, LCD_LINE_2)
+
+                elif (selection == selections[1]): #user sets speed unit
                     lcd_string("Km/H, MPH", LCD_LINE_1)
                     lcd_string(selector, LCD_LINE_2)
+                    if 0 == GPIO.input(downPin): #enter selection
+                        time.sleep(0.15) #want to ensure we don't debounce
+                        with open('settings.cfg', 'r') as file:
+                            line = file.readlines()
+                        line[0] = (str(k) + '\n') 
+                        for a, l in enumerate(line): #gets how many lines are in the file. Using 'a' is arbitrary
+                            pass
+                        x = 0 
+                        with open('settings.cfg', 'w') as file:
+                            while x <= a: #we have to rebuild the whole file, so writing it back line by line with the change we want
+                                file.writelines(line[x])
+                                x += 1
+                        file.close()
+                        lcd_string("Saved!", LCD_LINE_2)
+                        time.sleep(1)
+                        break #leave this menu
                     if (0 == GPIO.input(rightPin)):
-                        lcd_string(selector + "  ", LCD_LINE_2)
+                        k += 1
+                        if k > 1:
+                            selector = "*" #move back to starting position
+                            k = 0
+                        else:
+                            selector = ("       " + selector) #seven spaces for the increment
+                elif (selection == selections[2]): #user sets pressure unit
+                    lcd_string("mbar, In. Hg", LCD_LINE_1)
+                    lcd_string(selector, LCD_LINE_2)
+                    if 0 == GPIO.input(downPin): #enter selection
+                        time.sleep(0.15) #want to ensure we don't debounce
+                        with open('settings.cfg', 'r') as file:
+                            line = file.readlines()
+                        line[1] = (str(k) + '\n')
+                        for a, l in enumerate(line): #gets how many lines are in the file. Using 'a' is arbitrary
+                            pass
+                        x = 0 
+                        with open('settings.cfg', 'w') as file:
+                            while x <= a: #we have to rebuild the whole file, so writing it back line by line with the change we want
+                                file.writelines(line[x])
+                                x += 1
+                        file.close()
+                        lcd_string("Saved!", LCD_LINE_2)
+                        time.sleep(1)
+                        break #leave this menu
+                    if (0 == GPIO.input(rightPin)):
+                        k += 1
+                        if k > 1:
+                            selector = "*" #move back to starting position
+                            k = 0
+                        else:
+                            selector = ("      " + selector) #six spaces for the increment
+                elif (selection == selections[3]): #user sets zip code
+                    with open('settings.cfg', 'r') as file:
+                        line = file.readlines()
+                        zipcode = (line[3])
+                        zipcode = zipcode.replace('\n' , "") #there's a newline that has to be dropped
+                        zipcode = int(zipcode)
+                    lcd_string(str(zipcode).zfill(5), LCD_LINE_1) #zfill to ensure we always display 5 characters, despite there being a zero
+                    lcd_string(selector, LCD_LINE_2)
+                    
+                    if 0 == GPIO.input(upPin):
+                        if k == 0:
+                            zipcode = zipcode + 10000
+                        if k == 1:
+                            zipcode = zipcode + 1000
+                        if k == 2:
+                            zipcode = zipcode + 100
+                        if k == 3:
+                            zipcode = zipcode + 10
+                        if k == 4:
+                            zipcode = zipcode + 1
+                    if 0 == GPIO.input(downPin): #enter selection
+                        time.sleep(0.15) #want to ensure we don't debounce  
+                        line[3] = (str(k) + '\n')
+                        for a, l in enumerate(line): #gets how many lines are in the file. Using 'a' is arbitrary
+                            pass
+                        x = 0 
+                        with open('settings.cfg', 'w') as file:
+                            while x <= a: #we have to rebuild the whole file, so writing it back line by line with the change we want
+                                file.writelines(line[x])
+                                x += 1
+                        file.close()
+                        lcd_string("Saved!", LCD_LINE_2)
+                        time.sleep(1)
+                        break #leave this menu
+                    if (0 == GPIO.input(rightPin)):
+                        k += 1
+                        if k > 5:
+                            selector = "*" #move back to starting position
+                            k = 0
+                        else:
+                            selector = (" " + selector) #six spaces for the increment
+
                 else:
                     break
-
 
         curTime = time.time()
         while (0 == GPIO.input(leftPin) or 0 == GPIO.input(rightPin) or 0 == GPIO.input(upPin) or 0 == GPIO.input(downPin)): #any button may be pressed here
