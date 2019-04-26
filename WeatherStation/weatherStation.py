@@ -180,20 +180,100 @@ def getSettings(): #will have to redo as a 'getSettings' file
     settings.close()#we're done here, close the file
 
 def getZipcode():
-    while True: 
-        promptZip = input("Enter in a 5-Digit Zip Code: ")
-        type (promptZip)
-        if (len(promptZip) != 5):
-            print("Invalid zipcode entered. Please try again.")
-        else: #read the file to get # of lines, then write to our designated line
-            with open('settings.cfg', 'r') as file: 
-                line = file.readlines()          
-            line[3] = str(promptZip)
+    k = 0
+    selector = "*"
+    with open('settings.cfg', 'r') as file:
+        line = file.readlines()
+    file.close()
+    zipcode = (line[3])
+    zipcode = zipcode.replace('\n' , "") #there's a newline that has to be dropped
+
+    #splitting up the digits into individual integers
+    zc1 = int(zipcode[0])
+    zc2 = int(zipcode[1])
+    zc3 = int(zipcode[2])
+    zc4 = int(zipcode[3])
+    zc5 = int(zipcode[4])
+
+    while True:
+        zipcode = (str(zc1) + str(zc2) + str(zc3) + str(zc4) + str(zc5))               
+        lcd_string(zipcode, LCD_LINE_1)
+        lcd_string(selector, LCD_LINE_2)
+        if 0 == GPIO.input(upPin):
+            if k == 0:
+                if zc1 >= 9:
+                    zc1 = 0
+                else:
+                    zc1 += 1
+            if k == 1:
+                if zc2 >= 9:
+                    zc2 = 0
+                else:
+                    zc2 += 1
+            if k == 2:
+                if zc3 >= 9:
+                    zc3 = 0
+                else:
+                    zc3 += 1
+            if k == 3:
+                if zc4 >= 9:
+                    zc4 = 0
+                else:
+                    zc4 += 1
+            if k == 4:
+                if zc5 >= 9:
+                    zc5 = 0
+                else:
+                    zc5 += 1
+
+        if 0 == GPIO.input(downPin):
+            if k == 0:
+                if zc1 <= 0:
+                    zc1 = 9
+                else:
+                    zc1 -= 1
+            if k == 1:
+                if zc2 <= 0:
+                    zc2 = 9
+                else:
+                    zc2 -= 1
+            if k == 2:
+                if zc3 <= 0:
+                    zc3 = 9
+                else:
+                    zc3 -= 1
+            if k == 3:
+                if zc4 <= 0:
+                    zc4 = 9
+                else:
+                    zc4 -= 1
+            if k == 4:
+                if zc5 <= 0:
+                    zc5 = 9
+                else:
+                    zc5 -= 1
+
+        if (0 == GPIO.input(rightPin)):
+            k += 1
+            if k >= 5:
+                selector = "*" #move back to starting position
+                k = 0
+            else:
+                selector = (" " + selector) #one space for the increment
+
+        if (0 == GPIO.input(leftPin)):
+            line[3] = (zipcode + '\n') #\n for new line
+            for a, l in enumerate(line): #gets how many lines are in the file. Using 'a' is arbitrary
+                pass
+            x = 0 
             with open('settings.cfg', 'w') as file:
-                file.writelines(line)
-            zipcode = promptZip    
-            return zipcode
-            break
+                while x <= a: #we have to rebuild the whole file, so writing it back line by line with the change we want
+                    file.writelines(line[x])
+                    x += 1
+                file.close()
+            lcd_string("Saved!", LCD_LINE_2)
+            time.sleep(2)
+            return #leave this function
 
 def buildUrl(): #This searches for a zip and then navigates to a corresponding weather page; builds a URL to go to.
     global url
@@ -787,55 +867,16 @@ def userSetup():
                             k = 0
                         else:
                             selector = ("      " + selector) #six spaces for the increment
-                elif (selection == selections[3]): #user sets zip code
-                    with open('settings.cfg', 'r') as file:
-                        line = file.readlines()
-                        zipcode = (line[3])
-                        zipcode = zipcode.replace('\n' , "") #there's a newline that has to be dropped
-                        zipcode = int(zipcode)
-                    lcd_string(str(zipcode).zfill(5), LCD_LINE_1) #zfill to ensure we always display 5 characters, despite there being a zero
-                    lcd_string(selector, LCD_LINE_2)
-                    
-                    if 0 == GPIO.input(upPin):
-                        if k == 0:
-                            zipcode = zipcode + 10000
-                        if k == 1:
-                            zipcode = zipcode + 1000
-                        if k == 2:
-                            zipcode = zipcode + 100
-                        if k == 3:
-                            zipcode = zipcode + 10
-                        if k == 4:
-                            zipcode = zipcode + 1
-                    if 0 == GPIO.input(downPin): #enter selection
-                        time.sleep(0.15) #want to ensure we don't debounce  
-                        line[3] = (str(k) + '\n')
-                        for a, l in enumerate(line): #gets how many lines are in the file. Using 'a' is arbitrary
-                            pass
-                        x = 0 
-                        with open('settings.cfg', 'w') as file:
-                            while x <= a: #we have to rebuild the whole file, so writing it back line by line with the change we want
-                                file.writelines(line[x])
-                                x += 1
-                        file.close()
-                        lcd_string("Saved!", LCD_LINE_2)
-                        time.sleep(1)
-                        break #leave this menu
-                    if (0 == GPIO.input(rightPin)):
-                        k += 1
-                        if k > 5:
-                            selector = "*" #move back to starting position
-                            k = 0
-                        else:
-                            selector = (" " + selector) #six spaces for the increment
 
-                else:
+                elif (selection == selections[3]): #user sets zip code
+                    getZipcode() #runs the program then should exit the loop
                     break
 
+        #Exiting the setup program at large. User exits by holding down any button for a second.
         curTime = time.time()
         while (0 == GPIO.input(leftPin) or 0 == GPIO.input(rightPin) or 0 == GPIO.input(upPin) or 0 == GPIO.input(downPin)): #any button may be pressed here
             elapsedTime = time.time() - curTime  
-            if elapsedTime >= 2: 
+            if elapsedTime >= 1: 
                 lcd_string("Exiting setup", LCD_LINE_1)
                 lcd_string("* * * * * * * * * * * *", LCD_LINE_2)
                 time.sleep(1)
