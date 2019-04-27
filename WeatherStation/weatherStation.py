@@ -11,20 +11,31 @@ import os
 import random
 import RPi.GPIO as GPIO
 
+#GPIO assignments
 #LED assignments
 tempLed = 17 #green
 winterLed = 18 #blue
 alertLed = 19 #red
 conditionLed = 20 #white
+#buttons
+leftPin = 21
+rightPin = 22
+upPin = 23
+downPin = 24
+buttons = [21, 22, 23, 24]
 
 ledList = [tempLed, winterLed, alertLed, conditionLed]
 ledOn = GPIO.LOW
 ledOff = GPIO.HIGH
 
+#ledSetup
 GPIO.setmode(GPIO.BCM)
 GPIO.setup(ledList, GPIO.OUT)
 GPIO.output(ledList, GPIO.HIGH)
 GPIO.setwarnings(False)
+
+#buttonSetup
+GPIO.setup(buttons, GPIO.IN, pull_up_down = GPIO.PUD_UP)
 
 #LCD pin assignments, constants, etc
 I2C_ADDR  = 0x27 # I2C device address
@@ -118,16 +129,23 @@ def lcd_msg(msg_string):
 
  
 def webRead(URL):
-    # Get a handle to the URL object
     try:
-        # print("Trying to open webpage...")
         h = urllib.request.urlopen(URL)
-        # print("Opened webpage... ")
-        response = h.read()
-        #print(len(response)," chars in the response")
+        response = h.read()       
     except:
         print("Page failed to load. Ensure you didn't enter an invalid zip code or check the network.")
+        lcd_init()
+        lcd_string("Failed to load.", LCD_LINE_1)
+        lcd_string("Check zipcode...", LCD_LINE_2)
+        time.sleep(3)
+        lcd_string("or check network", LCD_LINE_2)
+        time.sleep(3)
+        lcd_init()
+        lcd_string("Loading settings...", LCD_LINE_1)
+        time.sleep(2)
         response = ""
+        userSetup()
+        theProgram()#starting over from the beginning
 
     return response
 
@@ -146,40 +164,244 @@ pressureUnits = ["millibars", "inches of Hg"]
 tempUnits = ["C", "K", "F"]
 
 #call from external settings file
-def getSettings(): #will have to redo as a 'getSettings' file
+def getSettings(): 
     global settings 
     settings = open('settings.cfg', 'r')
     global unit
     global pressureUnit
     global tempUnit
     global zipcode
+    global refreshRate
     unit = units[(int((settings.readline())))] #line 1 in settings.cfg corresponds to units
     pressureUnit = pressureUnits[(int((settings.readline())))] #line 2 for pressureUnits  
     tempUnit = tempUnits[(int((settings.readline())))] #line 3 for tempUnits
     zipcode = settings.readline() #line 4 holds zipcode 
     zipcode = zipcode.replace("\n","")#had to remove an undesired newline
+    refreshRate = int(settings.readline()) #line 5 is the refresh rate
     return unit
     return pressureUnit
     return tempUnit
     return zipcode
     return settings
+    return refreshRate
     settings.close()#we're done here, close the file
 
 def getZipcode():
-    while True: 
-        promptZip = input("Enter in a 5-Digit Zip Code: ")
-        type (promptZip)
-        if (len(promptZip) != 5):
-            print("Invalid zipcode entered. Please try again.")
-        else: #read the file to get # of lines, then write to our designated line
-            with open('settings.cfg', 'r') as file: 
-                line = file.readlines()          
-            line[3] = str(promptZip)
+    k = 0
+    selector = "^"
+    with open('settings.cfg', 'r') as file:
+        line = file.readlines()
+    file.close()
+    zipcode = (line[3])
+    zipcode = zipcode.replace('\n' , "") #there's a newline that has to be dropped
+
+    #splitting up the digits into individual integers
+    zc1 = int(zipcode[0])
+    zc2 = int(zipcode[1])
+    zc3 = int(zipcode[2])
+    zc4 = int(zipcode[3])
+    zc5 = int(zipcode[4])
+
+    while True:
+        zipcode = (str(zc1) + str(zc2) + str(zc3) + str(zc4) + str(zc5))               
+        lcd_string(zipcode, LCD_LINE_1)
+        lcd_string(selector, LCD_LINE_2)
+        if 0 == GPIO.input(upPin):
+            if k == 0:
+                if zc1 >= 9: #if we go over 9, reset to 0
+                    zc1 = 0
+                else:
+                    zc1 += 1
+            if k == 1:
+                if zc2 >= 9:
+                    zc2 = 0
+                else:
+                    zc2 += 1
+            if k == 2:
+                if zc3 >= 9:
+                    zc3 = 0
+                else:
+                    zc3 += 1
+            if k == 3:
+                if zc4 >= 9:
+                    zc4 = 0
+                else:
+                    zc4 += 1
+            if k == 4:
+                if zc5 >= 9:
+                    zc5 = 0
+                else:
+                    zc5 += 1
+
+        if 0 == GPIO.input(downPin):
+            if k == 0:
+                if zc1 <= 0: #if we go below 0, reset to 9
+                    zc1 = 9
+                else:
+                    zc1 -= 1
+            if k == 1:
+                if zc2 <= 0:
+                    zc2 = 9
+                else:
+                    zc2 -= 1
+            if k == 2:
+                if zc3 <= 0:
+                    zc3 = 9
+                else:
+                    zc3 -= 1
+            if k == 3:
+                if zc4 <= 0:
+                    zc4 = 9
+                else:
+                    zc4 -= 1
+            if k == 4:
+                if zc5 <= 0:
+                    zc5 = 9
+                else:
+                    zc5 -= 1
+
+        if 0 == GPIO.input(rightPin): #moves selector to the right
+            k += 1
+            if k >= 5:
+                selector = "^" #move back to starting position
+                k = 0
+            else:
+                selector = (" " + selector) #one space for the increment
+
+        if 0 == GPIO.input(leftPin):
+            line[3] = (zipcode + '\n') #\n for new line
+            for a, l in enumerate(line): #gets how many lines are in the file. Using 'a' is arbitrary
+                pass
+            x = 0 
             with open('settings.cfg', 'w') as file:
-                file.writelines(line)
-            zipcode = promptZip    
-            return zipcode
+                while x <= a: #we have to rebuild the whole file, so writing it back line by line with the change we want plus the same info we already had. There is probably a better way to do this
+                    file.writelines(line[x])
+                    x += 1
+                file.close()
+            lcd_string("Saved!", LCD_LINE_2)
+            time.sleep(2)
+            return #leave this function
+
+def setRefreshRate():
+    with open('settings.cfg', 'r') as file:
+        line = file.readlines()
+        file.close()
+    rate = int(line[4])
+    
+    while True:
+        lcd_string("Left to save", LCD_LINE_2)
+        if rate == 60:
+            lcd_string((str(int(rate / 60)) + " minute"), LCD_LINE_1)
+        if rate > 60 and rate < 3600:
+            lcd_string((str(int(rate / 60)) + " minutes"), LCD_LINE_1)
+        if rate < 60:
+            lcd_string((str(rate) + " seconds"), LCD_LINE_1)
+        if rate == 3600:
+            lcd_string((str(rate / 3600) + " hour"), LCD_LINE_1)
+        if rate > 3600 and rate < 86400:
+            lcd_string((str(round((rate / 3600), 2)) + " hours"), LCD_LINE_1)
+        if rate == 86400:
+            lcd_string((str(int(rate / 86400)) + " day"), LCD_LINE_1)
+        if rate > 86400:
+            lcd_string((str(round((rate / 86400), 2)) + " days"), LCD_LINE_1)
+                
+        if 0 == GPIO.input(upPin):
+            time.sleep(0.05)
+            if rate >= 10 and rate < 60:
+                rate = rate + 10
+            elif rate >= 60 and rate < 3600:
+                rate = rate + 60
+            elif rate >= 3600 and rate < 86400:
+                rate = rate + 900
+            elif rate >= 86400:
+                rate = rate + 21600
+
+        if 0 == GPIO.input(downPin):
+            time.sleep(0.05)
+            if rate > 10 and rate <= 60:
+                rate = rate - 10
+            elif rate >= 60 and rate < 3600:
+                rate = rate - 60
+            elif rate >= 3600 and rate < 86400:
+                rate = rate - 900
+            elif rate >= 86400:
+                rate = rate - 21600
+
+        if 0 == GPIO.input(leftPin):
+            line[4] = (str(rate) + '\n')
+            for a, l in enumerate(line): 
+                pass
+            x = 0 
+            with open('settings.cfg', 'w') as file:
+                while x <= a: 
+                    file.writelines(line[x])
+                    x += 1
+                file.close()
+            lcd_string("Saved!", LCD_LINE_2)
+            time.sleep(2)
+            return #leave this function
+
+def networkCheck():
+    #Thanks to https://www.raspberrypi.org/forums/viewtopic.php?t=124240 !
+    lcd_init()
+    percentIndex = 0
+    print("####################")
+    print("Running network check...")
+    print("Pinging an Internet IP")
+    lcd_string("Pinging 8.8.8.8", LCD_LINE_1)
+    pingOutput = str(subprocess.check_output(["ping", "8.8.8.8", "-c", "5"]))
+    percentIndex = pingOutput.find('%')
+    percentFailed = int(pingOutput[percentIndex - 1])
+    print("Loss rate: " + str(percentFailed) + "%")
+    lcd_string(("Loss rate: " + str(percentFailed) + "%"), LCD_LINE_1)
+    if percentFailed == 0:
+        print("Connection is perfect")
+        lcd_string("No issues", LCD_LINE_2)
+    elif percentFailed >1 and percentFailed <40:
+        print("Connection lossy")
+        lcd_string("Connection is loss", LCD_LINE_2)
+    elif percentFailed >40 and percentFailed <75:
+        print("Connection is poor")
+        lcd_string("Connection poor", LCD_LINE_2)     
+    elif percentFailed >75:
+        print("No connection to the Internet")
+        lcd_string("No connection", LCD_LINE_2)
+
+    time.sleep(5)
+               
+    lcd_init()
+    percentIndex = 0
+    print("Running network check...")
+    print("Pinging a website (name resolution check)")
+    lcd_string("Checking DNS", LCD_LINE_1)
+    lcd_string("Pinging website", LCD_LINE_2)
+    pingOutput = str(subprocess.check_output(["ping", "www.weather.com", "-c", "5"]))
+    percentIndex = pingOutput.find('%')
+    percentFailed = int(pingOutput[percentIndex - 1])
+    print("Loss rate: " + str(percentFailed) + "%")
+    lcd_string(("Loss rate: " + str(percentFailed) + "%"), LCD_LINE_1)
+    if percentFailed == 0:
+        print("Connection is perfect")
+        lcd_string("No issues", LCD_LINE_2)
+    elif percentFailed >1 and percentFailed <40:
+        print("Connection is lossy")
+        lcd_string("Connection loss", LCD_LINE_2)
+    elif percentFailed >40 and percentFailed <75:
+        print("Connection poor")
+        lcd_string("Connection is poor", LCD_LINE_2)     
+    elif percentFailed >75:
+        print("No connection to the Internet")
+        lcd_string("No connection", LCD_LINE_2)
+    time.sleep(5)
+
+    lcd_string("Left to exit", LCD_LINE_2)
+
+    while True:
+        if 0 == GPIO.input(leftPin):
+            lcd_string("Exiting", LCD_LINE_2)
+            time.sleep(0.25)
             break
+    return
 
 def buildUrl(): #This searches for a zip and then navigates to a corresponding weather page; builds a URL to go to.
     global url
@@ -187,6 +409,8 @@ def buildUrl(): #This searches for a zip and then navigates to a corresponding w
     return url
 
 def getWeather():
+    lcd_init()
+    lcd_string("Gathering data...", LCD_LINE_1)
     i = 0 #little loading animation with the lights
     while True: 
         GPIO.output(ledList[i], ledOn)
@@ -204,13 +428,17 @@ def getWeather():
             break
 
     global webpage
+    global zipMsg
+    lcd_string("Processing data...", LCD_LINE_1)
     webpage = (str(webRead(url)))
     #Save to file
     file = open('webpageout.txt', 'w')
     file.write(str(webpage))
     file.close()
-    print("Current weather for " + zipcode + ":")
+    zipMsg = ("Current weather for " + zipcode)
+    print(zipMsg)
     return webpage
+    return zipMsg
 
 def getTemp():
     #Finding temperature
@@ -221,6 +449,7 @@ def getTemp():
     temp = []
     difference = endTempIndex - tempIndex
     global tempInt
+    global tempString
     i = 0 
     while i <= difference: #puts values into array... 
         temp.append (webpage[tempIndex + i])
@@ -229,13 +458,17 @@ def getTemp():
 #unit conversions
     if (tempUnit == tempUnits[0]):#Celcius
         tempInt = round(((tempInt - 32) * (5/9)), 1)
-        print("Temperature: " + (str(tempInt)) + "°C")
+        tempString = ("Temp: " + (str(tempInt)) + "C")
+        print(tempString)
     elif (tempUnit == tempUnits[1]):#Kelvin...for the nerds.
         tempInt = round(((tempInt - 32) * (5/9) + 273.15), 2)
-        print("Temperature: " + (str(tempInt)) + "°K")
+        tempString = ("Temp: " + (str(tempInt)) + "K")
+        print(tempString)
     else: #Fahrenheit
-        print("Temperature: " + (str(tempInt)) + "°F")
+        tempString = ("Temp: " + (str(tempInt)) + "F")
+        print(tempString)
     return tempInt
+    return tempString
 
 def getWind():
     #Finding windspeed
@@ -247,6 +480,7 @@ def getWind():
     wind = []
     global windInt
     global direction
+    global windString
     windInt = 0
     i = 0
     while i < difference:
@@ -271,13 +505,17 @@ def getWind():
         while i <= space:
             windDir.append (wind[windDirIndex + i])
             i += 1
-        direction = ''.join(map(str,windDir))
-    print("Windspeed: " + (str(windInt)) + speedUnit + " " + direction)
+        direction = ''.join(map(str,windDir)) #Joining the elements of a list together. String joining discovered here https://www.programiz.com/python-programming/methods/string/join
+    windString = ("Wind: " + (str(windInt)) + speedUnit + " " + direction)
+    print(windString)
     return windInt
     return direction
+    return windString
    
-def getConditions():   
+def getConditions(): 
     #Finding conditions
+    global currentConditions
+    global conditionString
     conditionIndex = webpage.find(('class="today_nowcard-phrase"'))
     conditionIndex = webpage.find(('>'), conditionIndex) + 1
     endIndex = webpage.find('<', conditionIndex) - 1
@@ -287,36 +525,37 @@ def getConditions():
     while i <= stringLength:
         webpageConditions.append (webpage[conditionIndex + i])
         i += 1
-    global currentConditions
     currentConditions = ''.join(map(str,webpageConditions))#turning the webpageConditions list into string
-    print("Conditions: " + currentConditions)
+    conditionString = ("Conditions: " + currentConditions)
+    print(conditionString)
     return currentConditions
+    return conditionString
 
 def getHumidity():
     #Finding humidity
+    global humidityString
     humidityIndex = webpage.find('th>Humidity')
     humidityIndex = webpage.find('class=""', humidityIndex)
     humidityIndex = webpage.find('span', humidityIndex)
     humidityIndex = webpage.find('>', humidityIndex) + 1
     endHumidityIndex = webpage.find('<', humidityIndex) - 1
     difference = endHumidityIndex - humidityIndex
-    global humidity
     humidity = []
     i = 0
     while i <= difference:
         humidity.append (webpage[humidityIndex + i])
         i += 1
     humidityPercent = int((humidity[0] + humidity[1]))
-    print("Humidity: " + (str(humidityPercent) + "%"))
-    return humidity
+    humidityString = ("Humidity: " + (str(humidityPercent) + "%"))
+    print(humidityString)
 
 def getDewPoint():
+    global dpString
     dpIndex = webpage.find('th>Dew Point')
     dpIndex = webpage.find('class=""', dpIndex)
     dpIndex = webpage.find('>', dpIndex) + 1
     endDpIndex = webpage.find('<', dpIndex) - 1
-    difference = endDpIndex - dpIndex
-    global dewPointInt
+    difference = endDpIndex - dpIndex 
     dewPoint = []
     i = 0
     while i <= difference:
@@ -326,23 +565,25 @@ def getDewPoint():
     dewPointInt = int(dewPoint)
     if (tempUnit == tempUnits[0]):#Celcius
         dewPointInt = round(((dewPointInt - 32) * (5/9)), 1)
-        print("Dew Point: " + (str(dewPointInt)) + "°C")
+        dpString = ("Dew Point: " + (str(dewPointInt)) + "C")
+        print(dpString)
     elif (tempUnit == tempUnits[1]):#Kelvin...for the nerds.
         dewPointInt = round(((dewPointInt - 32) * (5/9) + 273.15), 2)
-        print("Dew Point: " + (str(dewPointInt)) + "°K")
+        dpString = ("Dew Point: " + (str(dewPointInt)) + "K")
+        print(dpString)
     else: #Fahrenheit
-        print("Dew Point: " + (str(dewPointInt)) + "°F")
-
-    return dewPointInt
+        dpString = ("Dew Point: " + (str(dewPointInt)) + "F")
+        print(dpString)
+    return dpString
 
 def getPressure():
     #Finding barometric pressure
+    global pressureString
     pressureIndex = webpage.find('th>Pressure')
     pressureIndex = webpage.find('class=""', pressureIndex)
     pressureIndex = webpage.find('>', pressureIndex) + 1
     endPressureIndex = webpage.find('in', pressureIndex) - 1
     difference = endPressureIndex - pressureIndex
-    global pressure
     pressure = []
     i = 0
     while i <= difference:
@@ -351,18 +592,22 @@ def getPressure():
     pressure = ''.join(map(str,pressure)) #turning the list into a string...
     pressure = float(pressure) #...then to an float
     if pressureUnit == pressureUnits[0]:
-        pressure = round((pressure * 33.8639), 1)
-        print("Barometric pressure: " + (str(pressure)) + " mbar")
+        pressure = round((pressure * 33.8639), 1) #conversion to millibars
+        pressureString = ("Pressure: " + (str(pressure)) + "mbar")
+        print(pressureString)
     else:
-        print("Barometric pressure: " + (str(pressure)) + " in. Hg")
-    return pressure
+        pressureString = ("Pressure: " + (str(pressure)) + "in. Hg")
+        print(pressureString)
+    return pressureString
 
-def getAlerts():
+def getAlerts(): 
+    global activeAlert
+    global alertString
     alertIndex = webpage.find('class="SevereAlertBar"')
-    global activeAlert 
-    if alertIndex == -1:
+    if alertIndex == -1: #no response condition
         activeAlert = "None" 
-        print("Alerts: " + activeAlert)
+        alertString = ("No alerts")
+        print(alertString)
     else: 
         alertIndex = webpage.find('title="', alertIndex)
         alertIndex = webpage.find('"', alertIndex) + 1
@@ -374,7 +619,9 @@ def getAlerts():
             alert.append (webpage[alertIndex + i])
             i += 1
         activeAlert = ''.join(map(str,alert)) 
-        print("Active Alert: " + activeAlert)
+        alertString = ("Alert: " + activeAlert)
+        print(alertString)
+    return alertString
     return activeAlert
 
 ledCurTime = time.time()
@@ -389,7 +636,7 @@ def processLeds():
     condDifference = time.time() - condCurTime
     alertDifference = time.time() - alertCurTime
 #process for temperature
-    if tempUnit == "C":
+    if tempUnit == "C": #different thresholds for different light activity
         if tempInt < 4.5:     
             if difference < 3:
                 GPIO.output(tempLed, ledOn)
@@ -398,7 +645,7 @@ def processLeds():
             if difference >= 6:
                 ledCurTime = time.time()
          
-        if tempInt > 4.5 < 12.8:
+        if tempInt > 4.5 and tempInt < 12.8:
             if difference < 2:
                 GPIO.output(tempLed, ledOn)
             if difference >= 2:
@@ -406,7 +653,7 @@ def processLeds():
             if difference >= 4:
                 ledCurTime = time.time()
 
-        if tempInt > 12.8 < 21.1:
+        if tempInt > 12.8 and tempInt < 21.1:
             GPIO.output(tempLed, ledOn)
 
         if tempInt > 21.1:
@@ -415,7 +662,6 @@ def processLeds():
             if difference >= 1:
                 GPIO.output(tempLed, ledOff)
             if difference >= 2:
-                #global ledCurTime
                 ledCurTime = time.time()
 
     if tempUnit == "F":
@@ -427,7 +673,7 @@ def processLeds():
             if difference >= 6: 
                 ledCurTime = time.time()
 
-        if tempInt > 40 < 55:
+        if tempInt > 40 and tempInt < 55:
             if difference < 2:
                 GPIO.output(tempLed, ledOn)
             if difference >= 2:
@@ -435,7 +681,7 @@ def processLeds():
             if difference >= 4:
                 ledCurTime = time.time()
         
-        if tempInt > 55 < 70:
+        if tempInt > 55 and tempInt < 70:
             GPIO.output(tempLed, ledOn)
         
         if tempInt > 70:
@@ -455,7 +701,7 @@ def processLeds():
             if difference >= 6: 
                 ledCurTime = time.time()
 
-        if tempInt > 277.594 < 285.928:
+        if tempInt > 277.594 and tempInt < 285.928:
             if difference < 2:
                 GPIO.output(tempLed, ledOn)
             if difference >= 2:
@@ -463,7 +709,7 @@ def processLeds():
             if difference >= 4:
                 ledCurTime = time.time()
         
-        if tempInt > 285.928 < 294.261:
+        if tempInt > 285.928 and tempInt < 294.261:
             GPIO.output(tempLed, ledOn)
         
         if tempInt > 294.261:
@@ -475,38 +721,36 @@ def processLeds():
                 ledCurTime = time.time()
 
 #process for conditions incl winter
-    possibleConditions = ["Sunny", "Mostly Sunny", "Fair", "Cloudy", "Mostly Cloudy", "Overcast", "Showers", "Light Rain", "Rain", "Thunderstorm", "Light Snow", "Snow Shower", "Snow", "Sleet", "Freezing Rain", "Ice"]
+    possibleConditions = ["Clear", "Sunny", "Mostly Sunny", "Partly Cloudy", "Fair", "Cloudy", "Mostly Cloudy", "Overcast", "Showers", "Light Rain", "Rain", "Rain Shower", "Heavy Rain", "Thunderstorm", "Light Snow", "Snow Shower", "Snow", "Sleet", "Freezing Rain", "Ice"] #dirty, but these are a list of common conditions plus a few odd ones weather.com threw my way.
 
     if currentConditions in possibleConditions:
         conditionIndex = possibleConditions.index(currentConditions)
-        if conditionIndex <= 2: #sunny, etc
+        if conditionIndex <= 4: #sunny, etc
             GPIO.output(conditionLed, ledOn)
-        if conditionIndex >= 3 <= 5: #cloudy
+        elif conditionIndex >= 5 and conditionIndex <= 7: #cloudy
             if condDifference < 1:
                 GPIO.output(conditionLed, ledOn)
             if condDifference >= 1:
                 GPIO.output(conditionLed, ledOff)
             if condDifference >= 2:
                 condCurTime = time.time()
-        if conditionIndex >= 6 <= 8: #water is falling from the sky
-            if condDifference < 2:
+        elif conditionIndex >= 8 and conditionIndex <= 12: #rain of some sort 
+            if condDifference < 2:       
                 GPIO.output(conditionLed, ledOn)
-            if condDifference >= 2:
+            if condDifference >= 2:    
                 GPIO.output(conditionLed, ledOff)
-            if condDifference >= 4:
+            if condDifference >= 4:          
                 condCurTime = time.time()
-        if conditionIndex == 9: #water is falling from the sky, likely at a high rate and with electrostaic discharges
-            if condDifference < 3:
-                GPIO.output(conditionLed, ledOn)
-            if condDifference >= 3:
-                GPIO.output(conditionLed, ledOff)
-            if condDifference >= 6:
-                condCurTime = time.time()
-        if conditionIndex >= 10 <= 12: #snowing!
+        elif conditionIndex == 13: #water is falling from the sky, likely at a high rate and with electrostaic discharges
+           if condDifference < 0.5:
+               GPIO.output(conditionLed, ledOn)
+           if condDifference >= 0.5:
+               GPIO.output(conditionLed, ledOff)
+           if condDifference >= 1:
+               condCurTime = time.time()
+        elif conditionIndex >= 14 and conditionIndex <= 16: #snowing!
             GPIO.output(winterLed, ledOn)
-        else:
-            GPIO.output(winterLed, ledOff)
-        if conditionIndex >= 13: #icing or etc. terrible winter weather
+        elif conditionIndex >= 17: #icing or etc. terrible winter weather
             if condDifference < 1:
                 GPIO.output(winterLed, ledOn)
             if condDifference >= 1:
@@ -516,6 +760,8 @@ def processLeds():
     else:
         print("Condition not supported, yell at whomever wrote this program.")
         print(currentConditions)
+        lcd_string("Program error", LCD_LINE_1)
+        lcd_string("Unk condition", LCD_LINE_2)
 
 #process alerts
     possibleAlerts = ["None", "Watch", "Advisory", "Warning"]
@@ -528,6 +774,9 @@ def processLeds():
         alertIndex = 1
 
     if "Advisory" in activeAlert:
+        alertIndex = 2
+
+    if "Alert" in activeAlert:
         alertIndex = 2
     
     if "Warning" in activeAlert:
@@ -550,40 +799,276 @@ def processLeds():
         if alertDifference >= 0.5:
             alertCurTime = time.time()
 
-firstRun = 0
-curTime = time.time() 
+i = 0 #top string index
+j = 1 #bottom string index
+k = 0 #selector index
 
-while True:     
-    if firstRun == 0:
-        firstRun += 1
-        print("Program start")
-        getSettings()
-        buildUrl()
-        getTime()
-        getWeather()
-        getAlerts()
-        getTemp()
-        getWind()
-        getConditions()
-        getDewPoint()
-        getHumidity()
-        getPressure()
+topLcdCurTime = time.time()
+bottomLcdCurTime = time.time()
+
+def processLcd():
+    global i
+    global j
+    global k
+    global topLcdCurTime
+    global bottomLcdCurTime
+    dataPoints = [zipMsg, alertString, tempString, windString, conditionString, dpString, humidityString, pressureString]
+    topString = dataPoints[i]
+    bottomString = dataPoints[j]
+    newTopString = ""
+    newBottomString = ""
+    startIndex = 0
+    endIndex = 16
+
+    if (0 == GPIO.input(leftPin) or 0 == GPIO.input(rightPin) or 0 == GPIO.input(upPin) or 0 == GPIO.input(downPin)): #any button may be pressed here. Delay inherited from processing this function and wait times for scrolling. Ends up being about 5 seconds. 
+        userSetup()
+
+    if len(topString) > 16: #SCROLLING TEXT!!!
+        while endIndex <= len(topString):
+            while time.time() - topLcdCurTime >= 0.1:
+                newTopString = topString[startIndex:endIndex]
+                startIndex += 1
+                endIndex += 1
+                lcd_string(newTopString, LCD_LINE_1)
+                topLcdCurTime = time.time()
+        startIndex = 0
+        endIndex = 16 #reset
+        if i >= (len(dataPoints) - 1):
+            i = 0
+        else:
+            i += 1
+    else:
+        lcd_string(topString, LCD_LINE_1)
+        if i >= (len(dataPoints) - 1):
+            i = 0
+        else:
+            i += 1
+
+    if len(bottomString) > 16:
+        while endIndex <= len(bottomString):
+            while time.time() - bottomLcdCurTime >= 0.1:
+                newBottomString = bottomString[startIndex:endIndex]
+                startIndex += 1
+                endIndex += 1
+                lcd_string(newBottomString, LCD_LINE_2)
+                bottomLcdCurTime = time.time()
+        startIndex = 0
+        endIndex = 16 #reset
+        if j >= (len(dataPoints) - 1):
+            j = 0
+        else:
+            j += 1
+    else:
+        lcd_string(bottomString, LCD_LINE_2)
+        if j >= (len(dataPoints) - 2):
+            j = 0
+        else:
+            j += 1
+    if i == j:
+        j += 1
+
+def userSetup():
+    lcd_string("Setup Program", LCD_LINE_1)
+    lcd_string("* * * * * * * * * * * *", LCD_LINE_2)
+    time.sleep(1)
+    lcd_init()
+    i = 0
+    j = 1
+    selections = ["Temp Units", "Speed Units", "Pressure Units", "Zip Code", "Refresh Rate", "Network Check"]  
+    while True:
+        selection = selections[i] 
+        lcd_string(selection + " *", LCD_LINE_1)
+        lcd_string(selections[j] + "", LCD_LINE_2)
+        if 0 == GPIO.input(downPin): #what follows is the logic for "scrolling" through the different options
+            if i >= (len(selections) - 1):
+                i = 0
+            else:
+                i += 1
+            if j >= (len(selections) - 1):
+                j = 0
+            else:
+                j += 1
+        if 0 == GPIO.input(upPin):
+            if i <= 0:
+                i = len(selections) - 1
+            else:
+                i -= 1
+            if j <= 0:
+                j = len(selections) - 1
+            else:
+                j -= 1
+        if 0 == GPIO.input(rightPin): #our enter button
+            lcd_init() #we're moving to the interior setup pages. Clear the lcd. Power to the main thrusters, Scotty.
+            selector = "^"
+            k = 0 #k will be used for the selector below
+            while True:
+                if 0 == GPIO.input(leftPin): #leave this menu if we press left 
+                   break
+                if (selection == selections[0]):
+                    lcd_string("C, K, F", LCD_LINE_1)
+                    lcd_string(selector, LCD_LINE_2)
+                    if 0 == GPIO.input(downPin): #enter selection
+                        time.sleep(0.15) #want to ensure we don't debounce
+                        with open('settings.cfg', 'r') as file:
+                            line = file.readlines()
+                            file.close()
+                        line[2] = (str(k) + '\n')
+                        for a, l in enumerate(line): #gets how many lines are in the file. Using 'a' is arbitrary. Will use this for rebuild the file
+                            pass
+                        x = 0 
+                        with open('settings.cfg', 'w') as file:
+                            while x <= a: #we have to rebuild the whole file, so writing it back line by line with the change we want
+                                file.writelines(line[x])
+                                x += 1
+                            file.close()
+                        lcd_string("Saved!", LCD_LINE_2)
+                        time.sleep(1)
+                        break
+                    if 0 == GPIO.input(rightPin): #moves selector to the right
+                        k += 1
+                        if k > 2:
+                            selector = "^" #move back to starting position
+                            k = 0
+                        else:
+                            selector = ("   " + selector) #three spaces for the increment
+                            lcd_string(selector, LCD_LINE_2)
+
+                elif (selection == selections[1]): #user sets speed unit
+                    lcd_string("Km/H, MPH", LCD_LINE_1)
+                    lcd_string(selector, LCD_LINE_2)
+                    if 0 == GPIO.input(downPin):
+                        time.sleep(0.15) 
+                        with open('settings.cfg', 'r') as file:
+                            line = file.readlines()
+                        line[0] = (str(k) + '\n') 
+                        for a, l in enumerate(line):
+                            pass
+                        x = 0 
+                        with open('settings.cfg', 'w') as file:
+                            while x <= a:
+                                file.writelines(line[x])
+                                x += 1
+                            file.close()
+                        lcd_string("Saved!", LCD_LINE_2)
+                        time.sleep(1)
+                        break #leave this menu
+                    if 0 == GPIO.input(rightPin):
+                        k += 1
+                        if k > 1:
+                            selector = "^"
+                            k = 0
+                        else:
+                            selector = ("      " + selector) #six spaces for the increment
+                            
+                elif (selection == selections[2]): #user sets pressure unit
+                    lcd_string("mbar, In. Hg", LCD_LINE_1)
+                    lcd_string(selector, LCD_LINE_2)
+                    if 0 == GPIO.input(downPin): #enter selection
+                        time.sleep(0.15) 
+                        with open('settings.cfg', 'r') as file:
+                            line = file.readlines()
+                        line[1] = (str(k) + '\n')
+                        for a, l in enumerate(line): 
+                            pass
+                        x = 0 
+                        with open('settings.cfg', 'w') as file:
+                            while x <= a: 
+                                file.writelines(line[x])
+                                x += 1
+                        file.close()
+                        lcd_string("Saved!", LCD_LINE_2)
+                        time.sleep(1)
+                        break #leave this menu
+                    if 0 == GPIO.input(rightPin):
+                        k += 1
+                        if k > 1:
+                            selector = "^" #move back to starting position
+                            k = 0
+                        else:
+                            selector = ("      " + selector) #six spaces for the increment
+
+                elif (selection == selections[3]): #user sets zip code
+                    getZipcode() #runs the program then should exit the loop
+                    break
+
+                elif (selection == selections[4]):
+                    setRefreshRate()
+                    break
+
+                elif (selection == selections[5]):
+                    networkCheck()
+                    break
+
+        #Exiting the setup program at large. User exits by holding down any button for a second.
         curTime = time.time()
+        while (0 == GPIO.input(leftPin) or 0 == GPIO.input(rightPin) or 0 == GPIO.input(upPin) or 0 == GPIO.input(downPin)): #any button may be pressed here
+            elapsedTime = time.time() - curTime  
+            if elapsedTime >= 1: 
+                lcd_string("Exiting setup", LCD_LINE_1)
+                lcd_string("* * * * * * * * * * * *", LCD_LINE_2)
+                time.sleep(1)
+                lcd_init()
+                theProgram() #get fresh information after settings modification
 
-    if time.time() - curTime >= 10:  
-        print("Refreshing Data...")
-        print("##############################")
-        getSettings()
-        buildUrl()
-        getTime()
-        getWeather()
-        getAlerts()
-        getTemp()
-        getWind()
-        getConditions()
-        getDewPoint()
-        getHumidity()
-        getPressure()        
-        curTime = time.time()
+curTime = time.time()
+lcdCurTime = time.time()
 
-    processLeds()
+def theProgram():
+    firstRun = True
+    global curTime
+    global lcdCurTime
+    
+    while True:
+        if firstRun == True:
+            print("Program start")
+            getSettings()
+            buildUrl()
+            getTime()
+            getWeather()
+            getAlerts()
+            getTemp()
+            getWind()
+            getConditions()
+            getDewPoint()
+            getHumidity()
+            getPressure()
+            curTime = time.time()
+            firstRun = False
+
+        if time.time() - curTime >= refreshRate:  
+            print("Refreshing Data...")
+            print("##############################")
+            lcd_init()
+            getSettings()
+            buildUrl()
+            getTime()
+            getWeather()
+            getAlerts()
+            getTemp()
+            getWind()
+            getConditions()
+            getDewPoint()
+            getHumidity()
+            getPressure()        
+            curTime = time.time()
+
+        processLeds() #process leds each time this loop runs
+        if (time.time() - lcdCurTime >= 5): #same thing here for the lcd
+            processLcd()
+            lcdCurTime = time.time()
+
+#now the magic happens
+theProgram()
+
+#>1000 lines, holy cow!
+# _____________________________________
+#/ You know damn well, Kyle, that this \
+#\ shouldn't have taken this long.     /
+# -------------------------------------
+#        \   ^__^
+#         \  (oo)\_______
+#            (__)\       )\/\
+#                ||----w |
+#                ||     ||
+#
+# This was a lot of fun and I learned a ton, rhyming unintentional :)
