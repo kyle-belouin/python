@@ -166,7 +166,7 @@ tempUnits = ["C", "K", "F"]
 #call from external settings file
 def getSettings(): 
     global settings 
-    settings = open('settings.cfg', 'r')
+    settings = open('/home/kpb/git/python/WeatherStation/settings.cfg', 'r')
     global unit
     global pressureUnit
     global tempUnit
@@ -189,7 +189,7 @@ def getSettings():
 def getZipcode():
     k = 0
     selector = "^"
-    with open('settings.cfg', 'r') as file:
+    with open('/home/kpb/git/python/WeatherStation/settings.cfg', 'r') as file:
         line = file.readlines()
     file.close()
     zipcode = (line[3])
@@ -273,7 +273,7 @@ def getZipcode():
             for a, l in enumerate(line): #gets how many lines are in the file. Using 'a' is arbitrary
                 pass
             x = 0 
-            with open('settings.cfg', 'w') as file:
+            with open('/home/kpb/git/python/WeatherStation/settings.cfg', 'w') as file:
                 while x <= a: #we have to rebuild the whole file, so writing it back line by line with the change we want plus the same info we already had. There is probably a better way to do this
                     file.writelines(line[x])
                     x += 1
@@ -283,7 +283,7 @@ def getZipcode():
             return #leave this function
 
 def setRefreshRate():
-    with open('settings.cfg', 'r') as file:
+    with open('/home/kpb/git/python/WeatherStation/settings.cfg', 'r') as file:
         line = file.readlines()
         file.close()
     rate = int(line[4])
@@ -332,7 +332,7 @@ def setRefreshRate():
             for a, l in enumerate(line): 
                 pass
             x = 0 
-            with open('settings.cfg', 'w') as file:
+            with open('/home/kpb/git/python/WeatherStation/settings.cfg', 'w') as file:
                 while x <= a: 
                     file.writelines(line[x])
                     x += 1
@@ -909,14 +909,14 @@ def userSetup():
                     lcd_string(selector, LCD_LINE_2)
                     if 0 == GPIO.input(downPin): #enter selection
                         time.sleep(0.15) #want to ensure we don't debounce
-                        with open('settings.cfg', 'r') as file:
+                        with open('/home/kpb/git/python/WeatherStation/settings.cfg', 'r') as file:
                             line = file.readlines()
                             file.close()
                         line[2] = (str(k) + '\n')
                         for a, l in enumerate(line): #gets how many lines are in the file. Using 'a' is arbitrary. Will use this for rebuild the file
                             pass
                         x = 0 
-                        with open('settings.cfg', 'w') as file:
+                        with open('/home/kpb/git/python/WeatherStation/settings.cfg', 'w') as file:
                             while x <= a: #we have to rebuild the whole file, so writing it back line by line with the change we want
                                 file.writelines(line[x])
                                 x += 1
@@ -938,13 +938,13 @@ def userSetup():
                     lcd_string(selector, LCD_LINE_2)
                     if 0 == GPIO.input(downPin):
                         time.sleep(0.15) 
-                        with open('settings.cfg', 'r') as file:
+                        with open('/home/kpb/git/python/WeatherStation/settings.cfg', 'r') as file:
                             line = file.readlines()
                         line[0] = (str(k) + '\n') 
                         for a, l in enumerate(line):
                             pass
                         x = 0 
-                        with open('settings.cfg', 'w') as file:
+                        with open('/home/kpb/git/python/WeatherStation/settings.cfg', 'w') as file:
                             while x <= a:
                                 file.writelines(line[x])
                                 x += 1
@@ -965,13 +965,13 @@ def userSetup():
                     lcd_string(selector, LCD_LINE_2)
                     if 0 == GPIO.input(downPin): #enter selection
                         time.sleep(0.15) 
-                        with open('settings.cfg', 'r') as file:
+                        with open('/home/kpb/git/python/WeatherStation/settings.cfg', 'r') as file:
                             line = file.readlines()
                         line[1] = (str(k) + '\n')
                         for a, l in enumerate(line): 
                             pass
                         x = 0 
-                        with open('settings.cfg', 'w') as file:
+                        with open('/home/kpb/git/python/WeatherStation/settings.cfg', 'w') as file:
                             while x <= a: 
                                 file.writelines(line[x])
                                 x += 1
