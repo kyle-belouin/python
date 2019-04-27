@@ -801,8 +801,6 @@ def processLeds():
         if alertDifference >= 0.5:
             alertCurTime = time.time()
 
-lcd_init() #clear the screen out before we use it
-
 i = 0
 j = 1
 k = 0
