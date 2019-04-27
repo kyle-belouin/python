@@ -129,11 +129,9 @@ def lcd_msg(msg_string):
 
  
 def webRead(URL):
-    # Get a handle to the URL object
     try:
         h = urllib.request.urlopen(URL)
-        response = h.read()
-        #print(len(response)," chars in the response")
+        response = h.read()       
     except:
         print("Page failed to load. Ensure you didn't enter an invalid zip code or check the network.")
         lcd_init()
@@ -166,7 +164,7 @@ pressureUnits = ["millibars", "inches of Hg"]
 tempUnits = ["C", "K", "F"]
 
 #call from external settings file
-def getSettings(): #will have to redo as a 'getSettings' file
+def getSettings(): 
     global settings 
     settings = open('settings.cfg', 'r')
     global unit
@@ -210,7 +208,7 @@ def getZipcode():
         lcd_string(selector, LCD_LINE_2)
         if 0 == GPIO.input(upPin):
             if k == 0:
-                if zc1 >= 9:
+                if zc1 >= 9: #if we go over 9, reset to 0
                     zc1 = 0
                 else:
                     zc1 += 1
@@ -237,7 +235,7 @@ def getZipcode():
 
         if 0 == GPIO.input(downPin):
             if k == 0:
-                if zc1 <= 0:
+                if zc1 <= 0: #if we go below 0, reset to 9
                     zc1 = 9
                 else:
                     zc1 -= 1
@@ -262,7 +260,7 @@ def getZipcode():
                 else:
                     zc5 -= 1
 
-        if (0 == GPIO.input(rightPin)):
+        if (0 == GPIO.input(rightPin)): #moves selector to the right
             k += 1
             if k >= 5:
                 selector = "^" #move back to starting position
@@ -276,7 +274,7 @@ def getZipcode():
                 pass
             x = 0 
             with open('settings.cfg', 'w') as file:
-                while x <= a: #we have to rebuild the whole file, so writing it back line by line with the change we want
+                while x <= a: #we have to rebuild the whole file, so writing it back line by line with the change we want plus the same info we already had. There is probably a better way to do this
                     file.writelines(line[x])
                     x += 1
                 file.close()
@@ -330,12 +328,12 @@ def setRefreshRate():
                 rate = rate - 21600
 
         if 0 == GPIO.input(leftPin):
-            line[4] = (str(rate) + '\n') #\n for new line
-            for a, l in enumerate(line): #gets how many lines are in the file.
+            line[4] = (str(rate) + '\n')
+            for a, l in enumerate(line): 
                 pass
             x = 0 
             with open('settings.cfg', 'w') as file:
-                while x <= a: #we have to rebuild the whole file, so writing it back line by line with the change we want
+                while x <= a: 
                     file.writelines(line[x])
                     x += 1
                 file.close()
@@ -507,7 +505,7 @@ def getWind():
         while i <= space:
             windDir.append (wind[windDirIndex + i])
             i += 1
-        direction = ''.join(map(str,windDir)) #string joining discovered here https://www.programiz.com/python-programming/methods/string/join
+        direction = ''.join(map(str,windDir)) #Joining the elements of a list together. String joining discovered here https://www.programiz.com/python-programming/methods/string/join
     windString = ("Wind: " + (str(windInt)) + speedUnit + " " + direction)
     print(windString)
     return windInt
@@ -594,7 +592,7 @@ def getPressure():
     pressure = ''.join(map(str,pressure)) #turning the list into a string...
     pressure = float(pressure) #...then to an float
     if pressureUnit == pressureUnits[0]:
-        pressure = round((pressure * 33.8639), 1)
+        pressure = round((pressure * 33.8639), 1) #conversion to millibars
         pressureString = ("Pressure: " + (str(pressure)) + "mbar")
         print(pressureString)
     else:
@@ -638,7 +636,7 @@ def processLeds():
     condDifference = time.time() - condCurTime
     alertDifference = time.time() - alertCurTime
 #process for temperature
-    if tempUnit == "C":
+    if tempUnit == "C": #different thresholds for different light activity
         if tempInt < 4.5:     
             if difference < 3:
                 GPIO.output(tempLed, ledOn)
@@ -647,7 +645,7 @@ def processLeds():
             if difference >= 6:
                 ledCurTime = time.time()
          
-        if tempInt > 4.5 < 12.8:
+        if tempInt > 4.5 and tempInt < 12.8:
             if difference < 2:
                 GPIO.output(tempLed, ledOn)
             if difference >= 2:
@@ -655,7 +653,7 @@ def processLeds():
             if difference >= 4:
                 ledCurTime = time.time()
 
-        if tempInt > 12.8 < 21.1:
+        if tempInt > 12.8 and tempInt < 21.1:
             GPIO.output(tempLed, ledOn)
 
         if tempInt > 21.1:
@@ -675,7 +673,7 @@ def processLeds():
             if difference >= 6: 
                 ledCurTime = time.time()
 
-        if tempInt > 40 < 55:
+        if tempInt > 40 and tempInt < 55:
             if difference < 2:
                 GPIO.output(tempLed, ledOn)
             if difference >= 2:
@@ -683,7 +681,7 @@ def processLeds():
             if difference >= 4:
                 ledCurTime = time.time()
         
-        if tempInt > 55 < 70:
+        if tempInt > 55 and tempInt < 70:
             GPIO.output(tempLed, ledOn)
         
         if tempInt > 70:
@@ -703,7 +701,7 @@ def processLeds():
             if difference >= 6: 
                 ledCurTime = time.time()
 
-        if tempInt > 277.594 < 285.928:
+        if tempInt > 277.594 and tempInt < 285.928:
             if difference < 2:
                 GPIO.output(tempLed, ledOn)
             if difference >= 2:
@@ -711,7 +709,7 @@ def processLeds():
             if difference >= 4:
                 ledCurTime = time.time()
         
-        if tempInt > 285.928 < 294.261:
+        if tempInt > 285.928 and tempInt < 294.261:
             GPIO.output(tempLed, ledOn)
         
         if tempInt > 294.261:
@@ -723,7 +721,7 @@ def processLeds():
                 ledCurTime = time.time()
 
 #process for conditions incl winter
-    possibleConditions = ["Clear", "Sunny", "Mostly Sunny", "Partly Cloudy", "Fair", "Cloudy", "Mostly Cloudy", "Overcast", "Showers", "Light Rain", "Rain", "Rain Shower", "Heavy Rain", "Thunderstorm", "Light Snow", "Snow Shower", "Snow", "Sleet", "Freezing Rain", "Ice"]
+    possibleConditions = ["Clear", "Sunny", "Mostly Sunny", "Partly Cloudy", "Fair", "Cloudy", "Mostly Cloudy", "Overcast", "Showers", "Light Rain", "Rain", "Rain Shower", "Heavy Rain", "Thunderstorm", "Light Snow", "Snow Shower", "Snow", "Sleet", "Freezing Rain", "Ice"] #dirty, but these are a list of common conditions plus a few odd ones weather.com threw my way.
 
     if currentConditions in possibleConditions:
         conditionIndex = possibleConditions.index(currentConditions)
@@ -801,10 +799,10 @@ def processLeds():
         if alertDifference >= 0.5:
             alertCurTime = time.time()
 
-i = 0
-j = 1
-k = 0
-l = 15
+i = 0 #top string index
+j = 1 #bottom string index
+k = 0 #selector index
+
 topLcdCurTime = time.time()
 bottomLcdCurTime = time.time()
 
@@ -812,7 +810,6 @@ def processLcd():
     global i
     global j
     global k
-    global l
     global topLcdCurTime
     global bottomLcdCurTime
     dataPoints = [zipMsg, alertString, tempString, windString, conditionString, dpString, humidityString, pressureString]
@@ -823,10 +820,10 @@ def processLcd():
     startIndex = 0
     endIndex = 16
 
-    if (0 == GPIO.input(leftPin) or 0 == GPIO.input(rightPin) or 0 == GPIO.input(upPin) or 0 == GPIO.input(downPin)): #any button may be pressed here
+    if (0 == GPIO.input(leftPin) or 0 == GPIO.input(rightPin) or 0 == GPIO.input(upPin) or 0 == GPIO.input(downPin)): #any button may be pressed here. Delay inherited from processing this function and wait times for scrolling. Ends up being about 5 seconds. 
         userSetup()
 
-    if len(topString) > 16:
+    if len(topString) > 16: #SCROLLING TEXT!!!
         while endIndex <= len(topString):
             while time.time() - topLcdCurTime >= 0.1:
                 newTopString = topString[startIndex:endIndex]
@@ -900,8 +897,8 @@ def userSetup():
                 j = len(selections) - 1
             else:
                 j -= 1
-        if (0 == GPIO.input(rightPin)):
-            lcd_init() #we're moving to the interior setup pages. Clear the lcd
+        if (0 == GPIO.input(rightPin)): #our enter button
+            lcd_init() #we're moving to the interior setup pages. Clear the lcd. Power to the main thrusters, Scotty.
             selector = "^"
             k = 0 #k will be used for the selector below
             while True:
@@ -914,19 +911,20 @@ def userSetup():
                         time.sleep(0.15) #want to ensure we don't debounce
                         with open('settings.cfg', 'r') as file:
                             line = file.readlines()
+                            file.close()
                         line[2] = (str(k) + '\n')
-                        for a, l in enumerate(line): #gets how many lines are in the file. Using 'a' is arbitrary
+                        for a, l in enumerate(line): #gets how many lines are in the file. Using 'a' is arbitrary. Will use this for rebuild the file
                             pass
                         x = 0 
                         with open('settings.cfg', 'w') as file:
                             while x <= a: #we have to rebuild the whole file, so writing it back line by line with the change we want
                                 file.writelines(line[x])
                                 x += 1
-                        file.close()
+                            file.close()
                         lcd_string("Saved!", LCD_LINE_2)
                         time.sleep(1)
                         break
-                    if (0 == GPIO.input(rightPin)):
+                    if (0 == GPIO.input(rightPin)): #moves selector to the right
                         k += 1
                         if k > 2:
                             selector = "^" #move back to starting position
@@ -938,26 +936,26 @@ def userSetup():
                 elif (selection == selections[1]): #user sets speed unit
                     lcd_string("Km/H, MPH", LCD_LINE_1)
                     lcd_string(selector, LCD_LINE_2)
-                    if 0 == GPIO.input(downPin): #enter selection
-                        time.sleep(0.15) #want to ensure we don't debounce
+                    if 0 == GPIO.input(downPin):
+                        time.sleep(0.15) 
                         with open('settings.cfg', 'r') as file:
                             line = file.readlines()
                         line[0] = (str(k) + '\n') 
-                        for a, l in enumerate(line): #gets how many lines are in the file. Using 'a' is arbitrary
+                        for a, l in enumerate(line):
                             pass
                         x = 0 
                         with open('settings.cfg', 'w') as file:
-                            while x <= a: #we have to rebuild the whole file, so writing it back line by line with the change we want
+                            while x <= a:
                                 file.writelines(line[x])
                                 x += 1
-                        file.close()
+                            file.close()
                         lcd_string("Saved!", LCD_LINE_2)
                         time.sleep(1)
                         break #leave this menu
                     if (0 == GPIO.input(rightPin)):
                         k += 1
                         if k > 1:
-                            selector = "^" #move back to starting position
+                            selector = "^"
                             k = 0
                         else:
                             selector = ("      " + selector) #six spaces for the increment
@@ -966,15 +964,15 @@ def userSetup():
                     lcd_string("mbar, In. Hg", LCD_LINE_1)
                     lcd_string(selector, LCD_LINE_2)
                     if 0 == GPIO.input(downPin): #enter selection
-                        time.sleep(0.15) #want to ensure we don't debounce
+                        time.sleep(0.15) 
                         with open('settings.cfg', 'r') as file:
                             line = file.readlines()
                         line[1] = (str(k) + '\n')
-                        for a, l in enumerate(line): #gets how many lines are in the file. Using 'a' is arbitrary
+                        for a, l in enumerate(line): 
                             pass
                         x = 0 
                         with open('settings.cfg', 'w') as file:
-                            while x <= a: #we have to rebuild the whole file, so writing it back line by line with the change we want
+                            while x <= a: 
                                 file.writelines(line[x])
                                 x += 1
                         file.close()
@@ -1062,7 +1060,7 @@ def theProgram():
 #now the magic happens
 theProgram()
 
-#1000 lines, holy cow!
+#>1000 lines, holy cow!
 # _____________________________________
 #/ You know damn well, Kyle, that this \
 #\ shouldn't have taken this long.     /
@@ -1072,3 +1070,5 @@ theProgram()
 #            (__)\       )\/\
 #                ||----w |
 #                ||     ||
+#
+# This was a lot of fun and I learned a ton, rhyming unintentional :)
