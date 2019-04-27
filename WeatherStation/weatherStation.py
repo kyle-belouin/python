@@ -260,7 +260,7 @@ def getZipcode():
                 else:
                     zc5 -= 1
 
-        if (0 == GPIO.input(rightPin)): #moves selector to the right
+        if 0 == GPIO.input(rightPin): #moves selector to the right
             k += 1
             if k >= 5:
                 selector = "^" #move back to starting position
@@ -268,7 +268,7 @@ def getZipcode():
             else:
                 selector = (" " + selector) #one space for the increment
 
-        if (0 == GPIO.input(leftPin)):
+        if 0 == GPIO.input(leftPin):
             line[3] = (zipcode + '\n') #\n for new line
             for a, l in enumerate(line): #gets how many lines are in the file. Using 'a' is arbitrary
                 pass
@@ -879,7 +879,7 @@ def userSetup():
         selection = selections[i] 
         lcd_string(selection + " *", LCD_LINE_1)
         lcd_string(selections[j] + "", LCD_LINE_2)
-        if (0 == GPIO.input(downPin)): #what follows is the logic for "scrolling" through the different options
+        if 0 == GPIO.input(downPin): #what follows is the logic for "scrolling" through the different options
             if i >= (len(selections) - 1):
                 i = 0
             else:
@@ -888,7 +888,7 @@ def userSetup():
                 j = 0
             else:
                 j += 1
-        if (0 == GPIO.input(upPin)):
+        if 0 == GPIO.input(upPin):
             if i <= 0:
                 i = len(selections) - 1
             else:
@@ -897,7 +897,7 @@ def userSetup():
                 j = len(selections) - 1
             else:
                 j -= 1
-        if (0 == GPIO.input(rightPin)): #our enter button
+        if 0 == GPIO.input(rightPin): #our enter button
             lcd_init() #we're moving to the interior setup pages. Clear the lcd. Power to the main thrusters, Scotty.
             selector = "^"
             k = 0 #k will be used for the selector below
@@ -924,7 +924,7 @@ def userSetup():
                         lcd_string("Saved!", LCD_LINE_2)
                         time.sleep(1)
                         break
-                    if (0 == GPIO.input(rightPin)): #moves selector to the right
+                    if 0 == GPIO.input(rightPin): #moves selector to the right
                         k += 1
                         if k > 2:
                             selector = "^" #move back to starting position
@@ -952,7 +952,7 @@ def userSetup():
                         lcd_string("Saved!", LCD_LINE_2)
                         time.sleep(1)
                         break #leave this menu
-                    if (0 == GPIO.input(rightPin)):
+                    if 0 == GPIO.input(rightPin):
                         k += 1
                         if k > 1:
                             selector = "^"
@@ -979,7 +979,7 @@ def userSetup():
                         lcd_string("Saved!", LCD_LINE_2)
                         time.sleep(1)
                         break #leave this menu
-                    if (0 == GPIO.input(rightPin)):
+                    if 0 == GPIO.input(rightPin):
                         k += 1
                         if k > 1:
                             selector = "^" #move back to starting position
