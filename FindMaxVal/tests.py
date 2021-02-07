@@ -35,9 +35,9 @@ def main():
     arr_object = MyArray(nums)
 
     # function calls
-    arr_object.find_max()
+    max_val = arr_object.find_max()
 
-    print(f"Test 1 - Maximum Value: {MyArray.max_val}")
+    print(f"Test 1 - Maximum Value: {max_val}")
 
     #####
     # TEST2 - pass an empty list into the MyArray class

@@ -32,10 +32,10 @@ class MyArray:
         if length == 0:
             return None
 
-        MyArray.max_val = self.num_list[0]
+        max_val = self.num_list[0]
 
         for i in self.num_list:
-            if i > MyArray.max_val:
-                MyArray.max_val = i
+            if i > max_val:
+                max_val = i
 
-        return MyArray.max_val
+        return max_val
