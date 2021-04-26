@@ -1,0 +1,2 @@
+Respondent|Country|JobSatisfaction|UndergradMajor|ConvertedSalary|Exercise|Gender|RaceEthnicity|EducationParents|HoursOutside|Age|LastNewJob|LanguageWorkedWith
+51900|United Kingdom|Moderately satisfied|Computer science, computer engineering, or software engineering|94455.0|3 - 4 times per week|Male|White or of European descent|Master’s degree (MA, MS, M.Eng., MBA, etc.)|3 - 4 hours|35 - 44 years old|Between 1 and 2 years ago|C;C#;Java;JavaScript;Objective-C;PHP;Swift;HTML;CSS

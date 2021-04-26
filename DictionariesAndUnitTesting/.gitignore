@@ -1,0 +1,21 @@
+# .gitignore
+# Simple .gitignore rules for Python programs
+
+# Ignore __pycache__ directory
+__pycache__/
+
+# Ignore compiled bytecode files
+# These file are generated when we use import statements
+#   The bytecode file of the imported file is generated and used for faster
+#   execution.
+*.pyc
+
+# Ignore optimized files.
+# These files are generated when python is called with -O (optimized flag)
+#   The optimization ignores assert statements
+# IMPORTANT NOTE: Starting with Python 3.5, no .pyo files get generated
+*.pyo
+
+# Ignore DDL files
+# There Python scripts made into Windows DLL
+*.pyd
