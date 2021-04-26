@@ -1,3 +1,6 @@
+This is a project I did for UNH-Manchester COMP525, and I am happy with its presentation and would like to display it in my portfolio.
+This serves as practice for processing dictionaries, lists, and running things with unit tests.
+
 ### race_ethnicity_by_country()
 ```
 def race_ethnicity_by_country(self):
