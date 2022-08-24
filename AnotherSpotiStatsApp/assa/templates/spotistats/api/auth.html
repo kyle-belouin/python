@@ -1,0 +1,14 @@
+{% load static %}
+<script type="text/javascript" src="{% static 'js/auth.js' %}"></script>
+
+{% for item in auth %}
+    <h2>Redirecting...</h2>
+    <script type="text/javascript">
+        localStorage.setItem("client_id", "{{ item.client_id }}"); // pull from Model
+        localStorage.setItem("client_secret", "{{ item.secret }}");
+    </script>
+{% endfor %}
+
+<script type="text/javascript">
+    auth_request(); // we're leaving this area
+</script>
